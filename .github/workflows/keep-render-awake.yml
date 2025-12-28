@@ -1,0 +1,15 @@
+name: Keep Render n8n Awake
+
+# Run every 13 minutes
+on:
+  schedule:
+    - cron: "*/11 * * * *"  # every 13 minutes
+  workflow_dispatch:       # allows manual trigger too
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render n8n service
+        run: |
+          curl -fsS https://n8n-fggh.onrender.com || true
