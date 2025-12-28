@@ -1,0 +1,93 @@
+{
+  "name": "telegram_trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -816,
+        -64
+      ],
+      "id": "75323f61-ee61-4e35-b50d-a22fec7bd672",
+      "name": "Telegram Trigger",
+      "webhookId": "1d68d773-ac25-405a-884a-e849f6453d5a",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "notesInFlow": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "72UhVnCEPBddn7Yh",
+          "name": "telegram_bot_@my_n8_n_bot_sam_bot"
+        }
+      },
+      "notes": "Telegram Trigger- Runs per Message"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "=Hello, the pipeline has been triggered by  {{ $json.message.from.username }} from a '{{ $json.message.chat.type }}'",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -544,
+        -64
+      ],
+      "id": "9af9dd50-712c-463c-a6ef-be19b8cd6f83",
+      "name": "Send a text message",
+      "webhookId": "522fd4da-a3c9-4630-b479-5ff3d8da1970",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "72UhVnCEPBddn7Yh",
+          "name": "telegram_bot_@my_n8_n_bot_sam_bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "b96a72fb-87ec-4915-b2d4-6a046239cb73",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2ff23050cbe6f011dba463f928eea36d3a5e642f735054dc3fd4d1348aac2a24"
+  },
+  "id": "zN0thFaWUP1J8wiF",
+  "tags": [
+    {
+      "updatedAt": "2025-12-28T21:48:54.591Z",
+      "createdAt": "2025-12-28T21:48:54.591Z",
+      "id": "WDZ8A1LFFnPLEkOm",
+      "name": "telegram mesg trigger"
+    }
+  ]
+}
