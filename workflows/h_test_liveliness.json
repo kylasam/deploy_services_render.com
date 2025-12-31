@@ -1,0 +1,90 @@
+{
+  "name": "h_test_liveliness",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        0
+      ],
+      "id": "dedeee97-4a14-4f69-9042-e3997488cff8",
+      "name": "Schedule Trigger",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "notes": "Hourly Run"
+    },
+    {
+      "parameters": {
+        "chatId": "5500999973",
+        "text": "=Hello, current execution time is  {{ $json['Readable date'] }} from the worflow {{ $workflow.name }} at the url {{ $execution.resumeUrl }}.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML",
+          "message_thread_id": 0
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "c58af193-8b6b-497d-96f7-37dca28dfb7c",
+      "name": "Send a text message",
+      "webhookId": "18315977-a440-4c88-8b4f-9ef40916b8a0",
+      "alwaysOutputData": false,
+      "notesInFlow": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "72UhVnCEPBddn7Yh",
+          "name": "telegram_bot_@my_n8_n_bot_sam_bot"
+        }
+      },
+      "notes": "Send status message to tlegram channel."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 60
+  },
+  "versionId": "d5172700-2d5a-4bbb-8fa0-7e585eeea38e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2ff23050cbe6f011dba463f928eea36d3a5e642f735054dc3fd4d1348aac2a24"
+  },
+  "id": "9KAveCYAEqHW6LKa",
+  "tags": []
+}
