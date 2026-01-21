@@ -1,0 +1,271 @@
+{
+  "name": "Homelyo Chatbot with Forms",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "homely-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        944,
+        32
+      ],
+      "id": "00f758e7-bfae-490d-badc-94ce7f66602c",
+      "name": "Webhook",
+      "webhookId": "56184ad6-acda-49ad-ac8b-c9b3f770ebe5"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "get",
+        "documentURL": "https://docs.google.com/document/d/1wbZ_7vC2ikRC42c7AsKJuNdzgbHOSYCfel7NQmOKqhs/edit?usp=sharing"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        32
+      ],
+      "id": "4cf5334b-073a-4789-b044-7563af35820b",
+      "name": "Get Knowledge Base",
+      "credentials": {
+        "googleApi": {
+          "id": "PWFRJ8GkzPw115xh",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet text = '';\n\nfor (const item of items) {\n  if (item.json.content) {\n    text += item.json.content + '\\n';\n  }\n}\n\nconst userMessage = $node[\"Webhook\"].json.body.message || '';\nconst customerData = $node[\"Webhook\"].json.body.customer_data || null;\n\nreturn [{\n  json: {\n    knowledge_base: text,\n    user_message: userMessage,\n    customer_data: customerData\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        32
+      ],
+      "id": "16cdb735-d2dc-4c14-979e-fd6e25fdadee",
+      "name": "Process Content"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "system-prompt",
+              "name": "system_prompt",
+              "value": "=You are Homely, the friendly property assistant for Homelyo.eu in Berlin-Lichtenrade.\n\nYour personality: Warm, helpful, professional, and concise.\n\nYour job:\n1. Answer questions ONLY from the knowledge base below\n2. Be clear about our STRICT RULES: NO PETS, NO SMOKING, NO DRUGS\n3. When info is unavailable, politely ask for customer details\n4. Keep responses friendly but brief (2-4 sentences max)\n\nKNOWLEDGE BASE:\n{{ $json.knowledge_base }}\n\nRULES:\n- Never invent pricing, policies, or details\n- If uncertain, say: \"I don't have that info, but I can have our team reach out! May I get your name and email?\"\n- Emphasize balcony advantage for KE2\n- Always mention 24-hour response time when collecting details\n- Use occasional emojis for warmth: 🏠 ✨ 📧",
+              "type": "string"
+            },
+            {
+              "id": "user-msg",
+              "name": "user_message",
+              "value": "={{ $json.user_message }}",
+              "type": "string"
+            },
+            {
+              "id": "has-customer-data",
+              "name": "has_customer_data",
+              "value": "={{ $json.customer_data !== null }}",
+              "type": "boolean"
+            },
+            {
+              "id": "customer-info",
+              "name": "customer_data",
+              "value": "={{ $json.customer_data }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1600,
+        32
+      ],
+      "id": "fd49fa71-6e4b-4061-bbed-369827c02c7a",
+      "name": "Set Prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": $json.system_prompt\n    },\n    {\n      \"role\": \"user\",\n      \"content\": $json.user_message\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 400\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1824,
+        32
+      ],
+      "id": "af93516e-d5a6-4549-8e18-05e48d6a5be7",
+      "name": "Groq API",
+      "credentials": {
+        "groqApi": {
+          "id": "hA1VUxlheb9zJf7G",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node[\"Set Prompt\"].json.has_customer_data }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        32
+      ],
+      "id": "914ff303-f609-4679-a2e2-06f31fb9e819",
+      "name": "Has Customer Data?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"reply\": $node[\"Groq API\"].json.choices[0].message.content } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2256,
+        144
+      ],
+      "id": "cd1bc876-9d8e-46a1-95a0-e12864b13997",
+      "name": "Respond (Normal)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Knowledge Base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Knowledge Base": {
+      "main": [
+        [
+          {
+            "node": "Process Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Content": {
+      "main": [
+        [
+          {
+            "node": "Set Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Prompt": {
+      "main": [
+        [
+          {
+            "node": "Groq API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq API": {
+      "main": [
+        [
+          {
+            "node": "Has Customer Data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Customer Data?": {
+      "main": [
+        [
+          {
+            "node": "Respond (Normal)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond (Normal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "bafa88eb-2c6b-42fb-841a-8cfc6c234271",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2ff23050cbe6f011dba463f928eea36d3a5e642f735054dc3fd4d1348aac2a24"
+  },
+  "id": "db8UYqenoWzZV6qf",
+  "tags": [
+    {
+      "updatedAt": "2026-01-21T00:35:42.082Z",
+      "createdAt": "2026-01-21T00:35:42.082Z",
+      "id": "h2iaFoC9LL8JVZZ7",
+      "name": "homelyo"
+    },
+    {
+      "updatedAt": "2026-01-21T00:35:47.854Z",
+      "createdAt": "2026-01-21T00:35:47.854Z",
+      "id": "QA8Hj5fy1elk3aD8",
+      "name": "chatbot"
+    }
+  ]
+}
