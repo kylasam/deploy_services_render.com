@@ -3,7 +3,7 @@ name: Keep Render n8n Awake
 # Run every 13 minutes
 on:
   schedule:
-    - cron: "*/11 * * * *"  # every 13 minutes
+    - cron: "*/4 * * * *"  # every 13 minutes
   workflow_dispatch:       # allows manual trigger too
 
 jobs:
