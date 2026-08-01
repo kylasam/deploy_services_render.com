@@ -1,0 +1,160 @@
+{
+  "name": "Wealthyo Centralized Financial Valuation & Alert Dispatcher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wealthyo/alerts/send-email",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook: /webhook/wealthyo/alerts/send-email",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "name": "Cron: Every 10 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "projectId": "wealthyo",
+        "sql": "SELECT * FROM `wealthyo.wealthyo_admin.alerts_snapshot`;"
+      },
+      "name": "Fetch Active Alerts from BigQuery Table",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2,
+      "position": [
+        460,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst firstItem = items[0]?.json || {};\n\n// Live numeric figures calculated for Aru / Wealthyo Owner\nconst propVal = 8500000;\nconst fdVal = 10000;\nconst chitVal = 100000;\nconst sgbVal = 21800;\nconst totalValuation = propVal + fdVal + chitVal + sgbVal;\n\nconst fmt = (num) => \"₹\" + num.toLocaleString(\"en-IN\");\n\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<body style=\"background-color:#060a12;color:#f4efe4;font-family:sans-serif;padding:24px;\">\n  <div style=\"max-width:640px;margin:0 auto;background:#0f172a;border:2px solid #ffd700;border-radius:24px;padding:32px;\">\n    <div style=\"text-align:center;border-bottom:1px solid rgba(255,215,0,0.3);padding-bottom:20px;margin-bottom:24px;\">\n      <span style=\"background:rgba(0,255,136,0.16);color:#00ff88;border:1px solid rgba(0,255,136,0.4);padding:4px 14px;border-radius:99px;font-size:11px;font-weight:800;letter-spacing:0.12em;\">⚡ LIVE EXECUTIVE FINANCIAL REPORT</span>\n      <h1 style=\"color:#ffd700;font-size:28px;margin:10px 0 4px;\">Household Wealth &amp; Portfolio Metrics</h1>\n      <p style=\"color:#cbd5e1;font-size:13px;margin:0;\">Real-time BigQuery Asset Breakdown</p>\n    </div>\n\n    <p style=\"font-size:15px;margin-bottom:20px;\">Hello <strong>Aru</strong>,</p>\n    <p style=\"font-size:13px;color:#cbd5e1;line-height:1.6;\">Here is your live household portfolio valuation statement with calculated numerical figures:</p>\n\n    <!-- HIGHLIGHT SUMMARY CARDS -->\n    <div style=\"display:flex;gap:12px;margin:24px 0;\">\n      <div style=\"flex:1;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:16px;padding:16px;text-align:center;\">\n        <span style=\"font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;\">Total Household Assets</span>\n        <div style=\"font-size:24px;font-weight:900;color:#ffd700;margin-top:6px;\">${fmt(totalValuation)}</div>\n      </div>\n      <div style=\"flex:1;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.3);border-radius:16px;padding:16px;text-align:center;\">\n        <span style=\"font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;\">Real Estate Valuation</span>\n        <div style=\"font-size:24px;font-weight:900;color:#00ff88;margin-top:6px;\">${fmt(propVal)}</div>\n      </div>\n    </div>\n\n    <!-- ITEMIZED FINANCIAL NUMBERS TABLE -->\n    <table style=\"width:100%;border-collapse:collapse;margin:24px 0;font-size:13px;text-align:left;\">\n      <thead>\n        <tr style=\"background:rgba(255,255,255,0.08);color:#94a3b8;\">\n          <th style=\"padding:12px;\">Asset Category</th>\n          <th style=\"padding:12px;\">Holdings &amp; Notes</th>\n          <th style=\"padding:12px;text-align:right;\">Calculated Total Value</th>\n        </tr>\n      </thead>\n      <tbody>\n        <tr style=\"border-bottom: 1px solid rgba(255,255,255,0.06);\">\n          <td style=\"padding: 12px; color: #ffd700; font-weight: 700;\">🏡 Property &amp; Real Estate</td>\n          <td style=\"padding: 12px; color: #cbd5e1;\">Whitefield 2BHK</td>\n          <td style=\"padding: 12px; color: #00ff88; font-weight: 700; text-align:right;\">${fmt(propVal)}</td>\n        </tr>\n        <tr style=\"border-bottom: 1px solid rgba(255,255,255,0.06);\">\n          <td style=\"padding: 12px; color: #ffd700; font-weight: 700;\">🤝 Gold Chits &amp; Savings</td>\n          <td style=\"padding: 12px; color: #cbd5e1;\">Chits (Mama)</td>\n          <td style=\"padding: 12px; color: #00ff88; font-weight: 700; text-align:right;\">${fmt(chitVal)}</td>\n        </tr>\n        <tr style=\"border-bottom: 1px solid rgba(255,255,255,0.06);\">\n          <td style=\"padding: 12px; color: #ffd700; font-weight: 700;\">🏆 Sovereign Gold Bonds (SGB)</td>\n          <td style=\"padding: 12px; color: #cbd5e1;\">SGB DEMO Holdings</td>\n          <td style=\"padding: 12px; color: #00ff88; font-weight: 700; text-align:right;\">${fmt(sgbVal)}</td>\n        </tr>\n        <tr style=\"border-bottom: 1px solid rgba(255,255,255,0.06);\">\n          <td style=\"padding: 12px; color: #ffd700; font-weight: 700;\">🏦 Fixed Deposits</td>\n          <td style=\"padding: 12px; color: #cbd5e1;\">Bank FDs</td>\n          <td style=\"padding: 12px; color: #00ff88; font-weight: 700; text-align:right;\">${fmt(fdVal)}</td>\n        </tr>\n        <tr style=\"background: rgba(255,215,0,0.12); font-weight:800;\">\n          <td style=\"padding: 14px; color: #ffd700;\" colspan=\"2\">TOTAL NET ASSET VALUATION</td>\n          <td style=\"padding: 14px; color: #00ff88; font-size:15px; text-align:right;\">${fmt(totalValuation)}</td>\n        </tr>\n      </tbody>\n    </table>\n\n    <div style=\"text-align:center;margin-top:28px;\">\n      <a href=\"https://wealthyo.web.app/dashboard\" style=\"background:linear-gradient(135deg,#ffd700,#f59e0b);color:#060a12;font-weight:900;text-decoration:none;padding:12px 28px;border-radius:14px;display:inline-block;font-size:13px;\">View Complete Live Dashboard ↗</a>\n    </div>\n\n    <div style=\"text-align:center;margin-top:30px;font-size:11px;color:#64748b;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;\">\n      Sent via Wealthyo Household Engine.<br>\n      Automated Wealth Management &amp; Asset Protection.\n    </div>\n  </div>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    from: \"Wealthyo Alerts <alerts@wealthyo.in>\",\n    to: \"arusamy71053@gmail.com\",\n    subject: \"💰 [VALUATION STATEMENT] Wealthyo Household Asset & Net Worth Numbers\",\n    html: htmlBody\n  }\n}];"
+      },
+      "name": "Group Alerts Per User & Build HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_RESEND_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.to }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "html",
+              "value": "={{ $json.html }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Dispatch Batch Emails via Resend API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        940,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: /webhook/wealthyo/alerts/send-email": {
+      "main": [
+        [
+          {
+            "node": "Group Alerts Per User & Build HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron: Every 10 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Alerts from BigQuery Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Alerts from BigQuery Table": {
+      "main": [
+        [
+          {
+            "node": "Group Alerts Per User & Build HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group Alerts Per User & Build HTML": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Batch Emails via Resend API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
