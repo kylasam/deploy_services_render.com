@@ -1,0 +1,39 @@
+# Render Infrastructure-as-Code (IaC) Blueprint Spec
+# Repository: deploy_services_render.com
+# Services: n8n Workflow Automation Engine
+
+services:
+  # n8n Web Service Specification
+  - type: web
+    name: n8n-automation-engine
+    env: docker
+    plan: free
+    region: singapore # asia-south1 equivalent
+    dockerContext: .
+    dockerfilePath: Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: N8N_PORT
+        value: 5678
+      - key: N8N_PROTOCOL
+        value: https
+      - key: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
+        value: "true"
+      - key: WEBHOOK_URL
+        value: https://n8n-fggh.onrender.com/
+      - key: N8N_PAYLOAD_SIZE_MAX
+        value: "16"
+      - key: EXECUTIONS_DATA_PRUNE
+        value: "true"
+      - key: EXECUTIONS_DATA_MAX_AGE
+        value: "168" # Retain logs for 7 days
+      - key: GENERIC_TIMEZONE
+        value: Asia/Kolkata
+    autoDeploy: true
+
+# Blueprint metadata & deployment instructions
+# ===================================================
+# To deploy on Render:
+# 1. Connect this repo (deploy_services_render.com) to Render Dashboard.
+# 2. Select Blueprint Deployment (New -> Blueprint).
+# 3. Render will auto-detect render.yaml and provision the n8n Docker instance.
