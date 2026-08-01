@@ -39,6 +39,7 @@
       "parameters": {
         "operation": "executeQuery",
         "projectId": "wealthyo",
+        "sqlQuery": "SELECT * FROM `wealthyo.wealthyo_admin.alerts_snapshot`;",
         "sql": "SELECT * FROM `wealthyo.wealthyo_admin.alerts_snapshot`;"
       },
       "name": "Fetch Active Alerts from BigQuery Table",
