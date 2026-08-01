@@ -1,0 +1,231 @@
+{
+  "name": "Wealthyo - Fillout Physical Gold Silver to Google Sheet",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wealthyo/fillout/physical-gold",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "5043bb07-4aaf-458d-9a10-a687173941bc",
+      "name": "Fillout Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        320
+      ],
+      "webhookId": "wealthyo-fillout-physical-gold"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const root = $json;\n\nfunction collectNamedArrays(value, found = []) {\n  if (!value || typeof value !== \"object\") return found;\n  if (Array.isArray(value.questions)) found.push(value.questions);\n  if (Array.isArray(value.urlParameters)) found.push(value.urlParameters);\n  if (Array.isArray(value.calculations)) found.push(value.calculations);\n  if (Array.isArray(value)) {\n    for (const item of value) collectNamedArrays(item, found);\n  } else {\n    for (const item of Object.values(value)) collectNamedArrays(item, found);\n  }\n  return found;\n}\n\nconst fields = {};\nfor (const list of collectNamedArrays(root)) {\n  for (const item of list) {\n    if (!item || !item.name) continue;\n    fields[String(item.name).trim()] = item.value ?? \"\";\n  }\n}\n\nfunction pick(...keys) {\n  for (const key of keys) {\n    const value = fields[key];\n    if (value !== undefined && value !== null && String(value).trim() !== \"\") return String(value).trim();\n  }\n  return \"\";\n}\n\nfunction cleanNumber(value) {\n  return String(value ?? \"\").replace(/[\u20b9,%]/g, \"\").replace(/,/g, \"\").trim();\n}\n\nfunction yesNo(value) {\n  const text = String(value ?? \"\").trim().toLowerCase();\n  if ([\"true\", \"yes\", \"y\", \"1\", \"enabled\", \"active\"].includes(text)) return \"Yes\";\n  if ([\"false\", \"no\", \"n\", \"0\", \"disabled\", \"inactive\"].includes(text)) return \"No\";\n  return String(value ?? \"\").trim();\n}\n\nfunction asList(value) {\n  if (Array.isArray(value)) return value.join(\", \");\n  return String(value ?? \"\").trim();\n}\n\nconst spreadsheetId = pick(\"spreadsheet_id\", \"spreadsheetId\", \"Spreadsheet ID\");\nif (!spreadsheetId) {\n  throw new Error(`Missing spreadsheet_id. Fields received by n8n: ${Object.keys(fields).join(\", \")}`);\n}\n\nreturn {\n  customer_id: pick(\"customer_id\", \"customerId\", \"Customer ID\"),\n  spreadsheet_id: spreadsheetId,\n  tab_name: pick(\"tab_name\", \"tabName\") || \"Physical Gold\",\n  source: pick(\"source\") || \"wealthyo_dashboard_physical_gold_silver\",\n  category: pick(\"category\", \"Category\") || \"Gold\",\n  item: pick(\"item\", \"Item\", \"item_name\", \"Item Name\", \"ornament_name\", \"Ornament Name\"),\n  type: pick(\"type\", \"Type\", \"gold_type\", \"Gold Type\"),\n  weight_grams: cleanNumber(pick(\"weight_grams\", \"Weight Grams\", \"Weight in grams\")),\n  purity: pick(\"purity\", \"Purity\"),\n  purchase_date: pick(\"purchase_date\", \"Purchase Date\", \"date_of_purchase\"),\n  purchase_amount: cleanNumber(pick(\"purchase_amount\", \"Purchase Amount\", \"total_purchase_amount\", \"Total Purchase Amount\")),\n  bought_from: pick(\"bought_from\", \"Bought From\", \"Where did you buy?\", \"where_did_you_buy\"),\n  has_invoice: yesNo(pick(\"has_invoice\", \"Has Invoice\")),\n  making_charges: cleanNumber(pick(\"making_charges\", \"Making Charges\")),\n  gst_amount: cleanNumber(pick(\"gst_amount\", \"GST Amount\")),\n  certification_or_marking: asList(fields.certification_or_marking ?? fields[\"Certification or marking\"] ?? fields[\"Certification / Marking\"]),\n  is_pledged: yesNo(pick(\"is_pledged\", \"Is Pledged\"))\n};"
+      },
+      "id": "ee49156a-7685-4f29-b487-8d74bfe930be",
+      "name": "Normalize Fillout Physical Gold Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Physical Gold",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "category": "={{ $json.category }}",
+            "item": "={{ $json.item }}",
+            "type": "={{ $json.type }}",
+            "weight_grams": "={{ $json.weight_grams }}",
+            "purity": "={{ $json.purity }}",
+            "purchase_date": "={{ $json.purchase_date }}",
+            "purchase_amount": "={{ $json.purchase_amount }}",
+            "bought_from": "={{ $json.bought_from }}",
+            "has_invoice": "={{ $json.has_invoice }}",
+            "making_charges": "={{ $json.making_charges }}",
+            "gst_amount": "={{ $json.gst_amount }}",
+            "certification_or_marking": "={{ $json.certification_or_marking }}",
+            "is_pledged": "={{ $json.is_pledged }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "item",
+              "displayName": "item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "weight_grams",
+              "displayName": "weight_grams",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "purity",
+              "displayName": "purity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "purchase_date",
+              "displayName": "purchase_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "purchase_amount",
+              "displayName": "purchase_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "bought_from",
+              "displayName": "bought_from",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "has_invoice",
+              "displayName": "has_invoice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "making_charges",
+              "displayName": "making_charges",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "gst_amount",
+              "displayName": "gst_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "certification_or_marking",
+              "displayName": "certification_or_marking",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_pledged",
+              "displayName": "is_pledged",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "a64d0d0a-59ce-4f28-953d-607e40ec0356",
+      "name": "Append Physical Gold Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        820,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Fillout Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Fillout Physical Gold Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Fillout Physical Gold Payload": {
+      "main": [
+        [
+          {
+            "node": "Append Physical Gold Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": []
+}

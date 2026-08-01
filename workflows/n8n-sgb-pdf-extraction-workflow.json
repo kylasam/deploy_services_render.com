@@ -1,0 +1,217 @@
+{
+  "name": "Wealthyo - SGB PDF Extract to Google Sheet",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wealthyo/sgb/pdf-extract",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "f9fc43bb-d2ea-4d3f-822d-1a6a3e4f5c01",
+      "name": "SGB Extract Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 320],
+      "webhookId": "wealthyo-sgb-pdf-extract"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.body.certificate_drive_file_id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567801",
+      "name": "Download PDF from Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567802",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [680, 320]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Merge webhook body fields with extracted PDF text\nconst webhookBody = $('SGB Extract Webhook').item.json.body;\nconst pdfText = $json.text || $json.data || '';\n\nreturn {\n  ...webhookBody,\n  pdf_text: pdfText\n};"
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567803",
+      "name": "Merge Webhook + PDF Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 320]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const root = $json;\n\nfunction deepValue(obj, path) {\n  return path.split('.').reduce((acc, key) => acc && acc[key], obj);\n}\n\nfunction collectNamedArrays(value, found = []) {\n  if (!value || typeof value !== 'object') return found;\n  if (Array.isArray(value.questions)) found.push(value.questions);\n  if (Array.isArray(value.urlParameters)) found.push(value.urlParameters);\n  if (Array.isArray(value.calculations)) found.push(value.calculations);\n  if (Array.isArray(value)) {\n    for (const item of value) collectNamedArrays(item, found);\n  } else {\n    for (const item of Object.values(value)) collectNamedArrays(item, found);\n  }\n  return found;\n}\n\nconst fields = {};\nfor (const list of collectNamedArrays(root)) {\n  for (const item of list) {\n    if (!item || !item.name) continue;\n    fields[String(item.name).trim()] = item.value ?? '';\n  }\n}\n\nfunction get(...keys) {\n  for (const key of keys) {\n    const direct = root[key];\n    const body = root.body?.[key];\n    const field = fields[key];\n    const nested = key.includes('.') ? deepValue(root, key) : undefined;\n    const values = [direct, body, field, nested];\n    for (const value of values) {\n      if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();\n    }\n  }\n  return '';\n}\n\nfunction cleanNumber(value) {\n  return String(value ?? '')\n    .replace(/[₹,%]/g, '')\n    .replace(/,/g, '')\n    .trim();\n}\n\nfunction titleCase(value) {\n  return String(value || '').trim().replace(/\\s+/g, ' ');\n}\n\nfunction monthNumber(mon) {\n  const key = String(mon || '').slice(0, 3).toLowerCase();\n  return { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' }[key] || '';\n}\n\nfunction normalizeDate(value) {\n  const text = String(value || '').trim();\n  if (!text) return '';\n  const iso = text.match(/^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})$/);\n  if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;\n  const dmyMon = text.match(/(\\d{1,2})[\\-\\s]([A-Za-z]{3,9})[\\-\\s](\\d{4})/i);\n  if (dmyMon) {\n    const mm = monthNumber(dmyMon[2]);\n    if (mm) return `${dmyMon[3]}-${mm}-${String(dmyMon[1]).padStart(2, '0')}`;\n  }\n  const parsed = new Date(text);\n  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);\n  return text;\n}\n\nfunction findText(patterns, fallback = '') {\n  const pdfText = get('pdf_text', 'text', 'extracted_text', 'body.pdf_text', 'body.text');\n  const text = String(pdfText || '').replace(/\\r/g, '\\n');\n  for (const pattern of patterns) {\n    const match = text.match(pattern);\n    if (match?.[1]) return titleCase(match[1]);\n  }\n  return fallback;\n}\n\nconst fileName = get('certificate_file_name', 'file_name', 'filename', 'name');\nif (fileName && !/^NSCL\\d{13}\\.pdf$/i.test(fileName)) {\n  throw new Error(`Ignored non-standard SGB filename: ${fileName}. Expected NSCL2023004979591.pdf`);\n}\n\nconst spreadsheetId = get('spreadsheet_id', 'spreadsheetId', 'Spreadsheet ID');\nif (!spreadsheetId) throw new Error(`Missing spreadsheet_id. Received keys: ${Object.keys(root).join(', ')}; named fields: ${Object.keys(fields).join(', ')}`);\n\nconst certificateNumber = get('certificate_number') || findText([/Certificate\\s*(?:No\\.?|Number)\\s*[:\\-]?\\s*([A-Z0-9]+)/i]);\nconst investorId = get('investor_id') || findText([/Investor\\s*ID\\s*[:\\-]?\\s*([0-9]+)/i], fileName.match(/^NSCL(\\d{13})\\.pdf$/i)?.[1] || '');\nconst registeredHolder = get('registered_holder') || findText([\n  /Registered\\s*Holder\\s*[:\\-]?\\s*([^\\n]+)/i,\n  /Name\\s*of\\s*Investor\\s*[:\\-]?\\s*([^\\n]+)/i,\n  /(?:Holder|Investor|Name)\\s*:\\s*([A-Z][A-Z\\s]+)/\n]);\nconst schemeYear = get('scheme_year') || findText([\n  /Scheme\\s*Year\\s*[:\\-]?\\s*([0-9]{4}[\\-–][0-9]{2,4})/i,\n  /SGB\\s*([0-9]{4}[\\-–][0-9]{2,4})/i,\n  /Series\\s*[IVX]+\\s*([0-9]{4}[\\-–][0-9]{2,4})/i\n]);\nconst holdingUnits = cleanNumber(get('holding_units') || findText([\n  /Holding\\s*Units\\s*[:\\-]?\\s*([0-9.]+)/i,\n  /No\\.?\\s*of\\s*Units\\s*[:\\-]?\\s*([0-9.]+)/i,\n  /Units\\s*[:\\-]?\\s*([0-9.]+)/i,\n  /Quantity\\s*[:\\-]?\\s*([0-9.]+)/i\n]));\nconst issueDate = normalizeDate(get('issue_date') || findText([\n  /Issue\\s*Date\\s*[:\\-]?\\s*([0-9]{1,2}[\\-\\s][A-Za-z]{3,9}[\\-\\s][0-9]{4})/i,\n  /Date\\s*of\\s*Issue\\s*[:\\-]?\\s*([0-9]{1,2}[\\-\\s][A-Za-z]{3,9}[\\-\\s][0-9]{4})/i,\n  /Issued\\s*On\\s*[:\\-]?\\s*([0-9]{1,2}[\\-\\s][A-Za-z]{3,9}[\\-\\s][0-9]{4})/i\n]));\nconst maturityDate = normalizeDate(get('maturity_date') || findText([\n  /Maturity\\s*Date\\s*[:\\-]?\\s*([0-9]{1,2}[\\-\\s][A-Za-z]{3,9}[\\-\\s][0-9]{4})/i,\n  /Date\\s*of\\s*Maturity\\s*[:\\-]?\\s*([0-9]{1,2}[\\-\\s][A-Za-z]{3,9}[\\-\\s][0-9]{4})/i,\n  /Matures\\s*On\\s*[:\\-]?\\s*([0-9]{1,2}[\\-\\s][A-Za-z]{3,9}[\\-\\s][0-9]{4})/i\n]));\nconst interestRatePct = cleanNumber(get('interest_rate_pct') || findText([/Interest\\s*(?:Rate)?\\s*[:\\-]?\\s*([0-9.]+)\\s*%/i], '2.5'));\nconst initialInvestment = cleanNumber(get('initial_investment') || findText([\n  /(?:Initial\\s*)?Investment\\s*(?:Amount)?\\s*[:\\u20B9\\- ]+([0-9,]+(?:\\.[0-9]+)?)/i,\n  /Amount\\s*(?:Paid|Invested)\\s*[:\\u20B9\\- ]+([0-9,]+(?:\\.[0-9]+)?)/i,\n  /Total\\s*Amount\\s*[:\\u20B9\\- ]+([0-9,]+(?:\\.[0-9]+)?)/i\n]));\nconst issuePricePerUnit = holdingUnits && initialInvestment\n  ? String(Math.round((Number(initialInvestment) / Number(holdingUnits)) * 100) / 100)\n  : cleanNumber(get('issue_price_per_unit') || findText([\n      /Issue\\s*Price\\s*(?:per\\s*(?:Unit|Gram))?\\s*[:\\u20B9\\- ]+([0-9,]+(?:\\.[0-9]+)?)/i,\n      /Price\\s*per\\s*(?:Unit|Gram)\\s*[:\\u20B9\\- ]+([0-9,]+(?:\\.[0-9]+)?)/i\n    ]));\n\n// Determine extraction status — extracted if we got at least 3 key fields from PDF\nconst pdfFieldsFound = [certificateNumber, registeredHolder, schemeYear, holdingUnits, issueDate, maturityDate, initialInvestment]\n  .filter(v => v && v.trim() !== '').length;\nconst extractionStatus = pdfFieldsFound >= 3 ? 'extracted' : pdfFieldsFound > 0 ? 'partial' : 'needs_review';\n\nreturn {\n  spreadsheet_id: spreadsheetId,\n  tab_name: get('tab_name') || 'SGB',\n  customer_id: get('customer_id'),\n  entry_date: get('entry_date') || new Date().toISOString().slice(0, 10),\n  certificate_file_name: fileName,\n  certificate_drive_file_id: get('certificate_drive_file_id', 'file_id', 'drive_file_id'),\n  certificate_drive_url: get('certificate_drive_url', 'file_url', 'drive_file_url'),\n  certificate_number: certificateNumber,\n  investor_id: investorId,\n  registered_holder: registeredHolder,\n  issuer: get('issuer') || 'Government of India',\n  scheme_name: get('scheme_name') || 'SOVEREIGN GOLD BONDS SCHEME',\n  scheme_year: schemeYear,\n  holding_units: holdingUnits,\n  issue_date: issueDate,\n  maturity_date: maturityDate,\n  interest_rate_pct: interestRatePct || '2.5',\n  interest_payout_frequency: get('interest_payout_frequency') || 'Half yearly',\n  interest_payout_month_1: get('interest_payout_month_1') || 'June 28',\n  interest_payout_month_2: get('interest_payout_month_2') || 'December 28',\n  initial_investment: initialInvestment,\n  issue_price_per_unit: issuePricePerUnit,\n  purchase_channel: get('purchase_channel') || 'Bank / Broker',\n  broker_company: get('broker_company'),\n  broker_poc_name: get('broker_poc_name'),\n  broker_phone: get('broker_phone'),\n  broker_email: get('broker_email'),\n  extraction_status: extractionStatus,\n  notes: get('notes')\n};"
+      },
+      "id": "6f23d931-dc48-44b9-9078-6032506de632",
+      "name": "Normalize SGB Extracted Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 320]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "SGB",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "entry_date": "={{ $json.entry_date }}",
+            "certificate_file_name": "={{ $json.certificate_file_name }}",
+            "certificate_drive_file_id": "={{ $json.certificate_drive_file_id }}",
+            "certificate_drive_url": "={{ $json.certificate_drive_url }}",
+            "certificate_number": "={{ $json.certificate_number }}",
+            "investor_id": "={{ $json.investor_id }}",
+            "registered_holder": "={{ $json.registered_holder }}",
+            "issuer": "={{ $json.issuer }}",
+            "scheme_name": "={{ $json.scheme_name }}",
+            "scheme_year": "={{ $json.scheme_year }}",
+            "holding_units": "={{ $json.holding_units }}",
+            "issue_date": "={{ $json.issue_date }}",
+            "maturity_date": "={{ $json.maturity_date }}",
+            "interest_rate_pct": "={{ $json.interest_rate_pct }}",
+            "interest_payout_frequency": "={{ $json.interest_payout_frequency }}",
+            "interest_payout_month_1": "={{ $json.interest_payout_month_1 }}",
+            "interest_payout_month_2": "={{ $json.interest_payout_month_2 }}",
+            "initial_investment": "={{ $json.initial_investment }}",
+            "issue_price_per_unit": "={{ $json.issue_price_per_unit }}",
+            "purchase_channel": "={{ $json.purchase_channel }}",
+            "broker_company": "={{ $json.broker_company }}",
+            "broker_poc_name": "={{ $json.broker_poc_name }}",
+            "broker_phone": "={{ $json.broker_phone }}",
+            "broker_email": "={{ $json.broker_email }}",
+            "extraction_status": "={{ $json.extraction_status }}",
+            "notes": "={{ $json.notes }}"
+          },
+          "matchingColumns": [
+            "certificate_drive_file_id"
+          ],
+          "schema": [
+            { "id": "entry_date", "displayName": "entry_date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "certificate_file_name", "displayName": "certificate_file_name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "certificate_drive_file_id", "displayName": "certificate_drive_file_id", "required": false, "defaultMatch": true, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "certificate_drive_url", "displayName": "certificate_drive_url", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "certificate_number", "displayName": "certificate_number", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "investor_id", "displayName": "investor_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "registered_holder", "displayName": "registered_holder", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "issuer", "displayName": "issuer", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "scheme_name", "displayName": "scheme_name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "scheme_year", "displayName": "scheme_year", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "holding_units", "displayName": "holding_units", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "issue_date", "displayName": "issue_date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "maturity_date", "displayName": "maturity_date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "interest_rate_pct", "displayName": "interest_rate_pct", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "interest_payout_frequency", "displayName": "interest_payout_frequency", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "interest_payout_month_1", "displayName": "interest_payout_month_1", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "interest_payout_month_2", "displayName": "interest_payout_month_2", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "initial_investment", "displayName": "initial_investment", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "issue_price_per_unit", "displayName": "issue_price_per_unit", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "purchase_channel", "displayName": "purchase_channel", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "broker_company", "displayName": "broker_company", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "broker_poc_name", "displayName": "broker_poc_name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "broker_phone", "displayName": "broker_phone", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "broker_email", "displayName": "broker_email", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "extraction_status", "displayName": "extraction_status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "notes", "displayName": "notes", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "c03867a0-b0a8-42ff-ae31-2889d2b6519c",
+      "name": "Update SGB Row By File ID",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1340, 320]
+    }
+  ],
+  "connections": {
+    "SGB Extract Webhook": {
+      "main": [
+        [
+          {
+            "node": "Download PDF from Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF from Drive": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Merge Webhook + PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Webhook + PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Normalize SGB Extracted Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize SGB Extracted Payload": {
+      "main": [
+        [
+          {
+            "node": "Update SGB Row By File ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": []
+}

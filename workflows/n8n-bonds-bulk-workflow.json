@@ -1,0 +1,282 @@
+{
+  "name": "Wealthyo - Fillout Bulk Bonds to Google Sheet",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wealthyo/fillout/bonds/bulk",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "8a4db3a1-48c7-45cf-b5e8-e1ad1da1ac28",
+      "name": "Fillout Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        320
+      ],
+      "webhookId": "wealthyo-fillout-bonds-bulk"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const root = $input.first().json;\n\nfunction collectNamedArrays(value, found = []) {\n  if (!value || typeof value !== \"object\") return found;\n  if (Array.isArray(value.questions)) found.push(value.questions);\n  if (Array.isArray(value.urlParameters)) found.push(value.urlParameters);\n  if (Array.isArray(value.calculations)) found.push(value.calculations);\n  if (Array.isArray(value)) {\n    for (const item of value) collectNamedArrays(item, found);\n  } else {\n    for (const item of Object.values(value)) collectNamedArrays(item, found);\n  }\n  return found;\n}\n\nconst fields = {};\nfor (const list of collectNamedArrays(root)) {\n  for (const item of list) {\n    if (!item || !item.name) continue;\n    fields[String(item.name).trim()] = item.value ?? \"\";\n  }\n}\n\nfunction value(key) {\n  const v = fields[key];\n  return v === undefined || v === null ? \"\" : String(v).trim();\n}\n\nfunction pick(...keys) {\n  for (const key of keys) {\n    const v = value(key);\n    if (v) return v;\n  }\n  return \"\";\n}\n\nfunction cleanNumber(v) {\n  return String(v ?? \"\").replace(/[\u20b9,%]/g, \"\").replace(/,/g, \"\").trim();\n}\n\nfunction rowFor(prefix = \"\") {\n  const keys = (name, label) => prefix\n    ? [`${prefix}_${name}`, `${prefix}_${label}`]\n    : [name, label];\n\n  return {\n    invest_platform: pick(...keys(\"invest_platform\", \"Investment Platform\"), \"invest_platform\", \"Investment Platform\"),\n    issuer_type: pick(...keys(\"issuer_type\", \"Issuer Type\"), \"issuer_type\", \"Issuer Type\"),\n    sector: pick(...keys(\"sector\", \"Sector\"), \"sector\", \"Sector\"),\n    issuer_domain: pick(...keys(\"issuer_domain\", \"Issuer Domain\"), \"issuer_domain\", \"Issuer Domain\"),\n    isin: pick(...keys(\"isin\", \"ISIN\"), \"isin\", \"ISIN\"),\n    units: cleanNumber(pick(...keys(\"units\", \"Units\"), \"units\", \"Units\")),\n    total_investment: cleanNumber(pick(...keys(\"total_investment\", \"Total Investment\"), `${prefix}_Investment \u20b9`, \"total_investment\", \"Investment \u20b9\")),\n    start_date: pick(...keys(\"start_date\", \"Start Date\"), \"start_date\", \"Start Date\"),\n    end_date: pick(...keys(\"end_date\", \"End Date\"), \"end_date\", \"End Date\"),\n    coupon_rate_pct: cleanNumber(pick(...keys(\"coupon_rate_pct\", \"Coupon Rate\"), `${prefix}_Coupon Rate %`, \"coupon_rate_pct\", \"Coupon Rate %\")),\n    ytm_pct: cleanNumber(pick(...keys(\"ytm_pct\", \"YTM\"), `${prefix}_YTM %`, \"ytm_pct\", \"YTM %\")),\n    interest_payout_frequency_in_months: cleanNumber(pick(...keys(\"interest_payout_frequency_in_months\", \"Interest Payout Frequency In Months\"), \"interest_payout_frequency_in_months\")),\n    maturity_amount: cleanNumber(pick(...keys(\"maturity_amount\", \"Maturity Amount\"), `${prefix}_Maturity \u20b9`, \"maturity_amount\", \"Maturity \u20b9\")),\n    relationship_manager_name: pick(...keys(\"relationship_manager_name\", \"Relationship Manager Name\"), \"relationship_manager_name\"),\n    relationship_manager_email: pick(...keys(\"relationship_manager_email\", \"Relationship Manager Email\"), \"relationship_manager_email\"),\n    relationship_manager_phone: pick(...keys(\"relationship_manager_phone\", \"Relationship Manager Phone\"), \"relationship_manager_phone\"),\n    notes: pick(...keys(\"notes\", \"Notes\"), \"notes\", \"Notes\")\n  };\n}\n\nconst spreadsheetId = pick(\"spreadsheet_id\", \"spreadsheetId\", \"Spreadsheet ID\");\nif (!spreadsheetId) {\n  throw new Error(`Missing spreadsheet_id. Fields received by n8n: ${Object.keys(fields).join(\", \")}`);\n}\n\nconst prefixes = new Set();\nfor (const name of Object.keys(fields)) {\n  let match = name.match(/^bond_(\\d+)_(.+)$/);\n  if (match) prefixes.add(`bond_${match[1]}`);\n  match = name.match(/^(\\d+)_(.+)$/);\n  if (match) prefixes.add(match[1]);\n}\n\nconst rows = prefixes.size\n  ? [...prefixes].sort((a, b) => Number(String(a).replace(\"bond_\", \"\")) - Number(String(b).replace(\"bond_\", \"\"))).map(prefix => rowFor(prefix)).filter(r => r.isin || r.total_investment)\n  : [rowFor(\"\")].filter(r => r.isin || r.total_investment);\n\nreturn rows.map(row => ({\n  json: {\n    customer_id: pick(\"customer_id\", \"customerId\", \"Customer ID\"),\n    spreadsheet_id: spreadsheetId,\n    tab_name: pick(\"tab_name\", \"tabName\") || \"Bonds\",\n    source: pick(\"source\") || \"wealthyo_dashboard_bulk_bonds\",\n    entry_mode: pick(\"entry_mode\") || \"bulk\",\n    ...row\n  }\n}));"
+      },
+      "id": "cb6723a2-78e2-45e3-87d3-bfefb74ac370",
+      "name": "Normalize Fillout Bond Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Bonds",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "invest_platform": "={ $json.invest_platform }",
+            "issuer_type": "={ $json.issuer_type }",
+            "sector": "={ $json.sector }",
+            "issuer_domain": "={ $json.issuer_domain }",
+            "isin": "={ $json.isin }",
+            "units": "={ $json.units }",
+            "total_investment": "={ $json.total_investment }",
+            "start_date": "={ $json.start_date }",
+            "end_date": "={ $json.end_date }",
+            "coupon_rate_pct": "={ $json.coupon_rate_pct }",
+            "ytm_pct": "={ $json.ytm_pct }",
+            "interest_payout_frequency_in_months": "={ $json.interest_payout_frequency_in_months }",
+            "maturity_amount": "={ $json.maturity_amount }",
+            "relationship_manager_name": "={ $json.relationship_manager_name }",
+            "relationship_manager_email": "={ $json.relationship_manager_email }",
+            "relationship_manager_phone": "={ $json.relationship_manager_phone }",
+            "notes": "={ $json.notes }"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "invest_platform",
+              "displayName": "invest_platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issuer_type",
+              "displayName": "issuer_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sector",
+              "displayName": "sector",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issuer_domain",
+              "displayName": "issuer_domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "isin",
+              "displayName": "isin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "units",
+              "displayName": "units",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_investment",
+              "displayName": "total_investment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "end_date",
+              "displayName": "end_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "coupon_rate_pct",
+              "displayName": "coupon_rate_pct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ytm_pct",
+              "displayName": "ytm_pct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interest_payout_frequency_in_months",
+              "displayName": "interest_payout_frequency_in_months",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "maturity_amount",
+              "displayName": "maturity_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "relationship_manager_name",
+              "displayName": "relationship_manager_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "relationship_manager_email",
+              "displayName": "relationship_manager_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "relationship_manager_phone",
+              "displayName": "relationship_manager_phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "valueInputMode": "RAW"
+        }
+      },
+      "id": "313d8363-c731-42f8-b7c8-136a774c0d98",
+      "name": "Append Bond Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        820,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "REPLACE_WITH_YOUR_GOOGLE_SHEETS_CREDENTIAL_NAME"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Fillout Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Fillout Bond Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Fillout Bond Payload": {
+      "main": [
+        [
+          {
+            "node": "Append Bond Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-06-01T00:00:00.000Z",
+  "versionId": "wealthyo-fillout-bonds-bulk-v1"
+}

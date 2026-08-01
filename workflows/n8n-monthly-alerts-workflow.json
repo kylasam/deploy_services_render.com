@@ -1,0 +1,67 @@
+{
+  "name": "Wealthyo 1st of Month Household Digest Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDay": 1,
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "name": "Every 1st of Month 8 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "projectId": "wealthyo",
+        "sql": "SELECT * FROM `wealthyo.wealthyo_admin.everymonth` WHERE email_enabled = 'true' OR email_enabled = 'TRUE'"
+      },
+      "name": "Fetch Monthly Alerts from BigQuery",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst grouped = {};\n\nfor (const item of items) {\n  const data = item.json;\n  const userId = data.user_id || data.email || 'default';\n  if (!grouped[userId]) {\n    grouped[userId] = {\n      user_id: userId,\n      email: data.email || '',\n      alerts: []\n    };\n  }\n  grouped[userId].alerts.push(data);\n}\n\nreturn Object.values(grouped).map(group => ({ json: group }));"
+      },
+      "name": "Group Alerts per User",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Every 1st of Month 8 AM": {
+      "main": [
+        [
+          {
+            "node": "Fetch Monthly Alerts from BigQuery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Monthly Alerts from BigQuery": {
+      "main": [
+        [
+          {
+            "node": "Group Alerts per User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
