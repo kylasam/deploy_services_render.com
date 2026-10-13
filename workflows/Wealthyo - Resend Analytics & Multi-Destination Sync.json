@@ -1,0 +1,94 @@
+{
+  "name": "Wealthyo - Resend Analytics & Multi-Destination Sync",
+  "nodes": [
+    {
+      "id": "d016cdef-8bae-428a-908c-71849890e06c",
+      "name": "Resend Webhook Trigger",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {},
+        "path": "wealthyo/resend-analytics"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "wealthyo-resend-analytics"
+    },
+    {
+      "id": "513b3bd0-852b-41c9-b1ad-4c273c34d613",
+      "name": "Normalize Resend Event",
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst eventType = body.type || 'email.unknown';\nconst data = body.data || {};\nconst recipient = Array.isArray(data.to) ? data.to[0] : (data.to || 'unknown');\nconst subject = data.subject || 'No Subject';\nconst emailId = data.email_id || data.id || '';\nconst createdAt = data.created_at || new Date().toISOString();\n\nreturn [{\n  json: {\n    event_type: eventType.replace('.', '_'),\n    raw_type: eventType,\n    recipient: recipient.toLowerCase(),\n    subject: subject,\n    email_id: emailId,\n    created_at: createdAt,\n    posthog_payload: {\n      api_key: \"phc_nyTy8YcAKX2XGhqS5dGjP65kK5MSgQdKcRAXNjZKmWEu\",\n      event: `resend_${eventType.replace('.', '_')}`,\n      distinct_id: recipient.toLowerCase(),\n      properties: {\n        email_subject: subject,\n        resend_email_id: emailId,\n        event_time: createdAt,\n        channel: \"resend_email\"\n      }\n    }\n  }\n}];"
+      },
+      "position": [
+        240,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "b7f81dad-0ba9-4cb9-b4c3-cb9912d6d242",
+      "name": "Send Event to PostHog",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify($json.posthog_payload) }}",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://eu.i.posthog.com/capture/"
+      },
+      "position": [
+        480,
+        0
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    }
+  ],
+  "connections": {
+    "Normalize Resend Event": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send Event to PostHog",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Resend Webhook Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Normalize Resend Event",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "binaryMode": "separate",
+    "executionOrder": "v1"
+  },
+  "versionId": "d36ec144-a3e5-40dc-8453-4c6b2e419c96",
+  "id": "n51nE1cH2NDIw4We",
+  "meta": null,
+  "tags": []
+}

@@ -1,0 +1,231 @@
+{
+  "name": "Wealthyo - Fillout GoldChit to Google Sheet",
+  "nodes": [
+    {
+      "id": "7adf2bef-82cc-4dca-b8aa-d3647330c81f",
+      "name": "Fillout Webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {
+          "responseData": {
+            "responseBody": "{\"message\":\"GoldChit workflow started\"}"
+          }
+        },
+        "path": "wealthyo/fillout/gold-chit"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "wealthyo-fillout-goldchit"
+    },
+    {
+      "id": "d37f050b-7d4a-4f0c-9e8e-fb1da09b109b",
+      "name": "Normalize GoldChit Payload",
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    customer_id: pick(\"customer_id\", \"customerId\", \"Customer ID\"),\n    spreadsheet_id: spreadsheetId,\n    tab_name: pick(\"tab_name\", \"tabName\") || \"GoldChit\",\n    source: pick(\"source\") || \"wealthyo_dashboard_gold_chit\",\n\n    scheme_name: pick(\"scheme_name\", \"Scheme Name\"),\n    jeweller_name: pick(\"jeweller_name\", \"Jeweller Name\"),\n    branch: pick(\"branch\", \"Branch\"),\n    salesperson_name: pick(\"salesperson_name\", \"Salesperson Name\"),\n    salesperson_number: pick(\"salesperson_number\", \"Salesperson Number\"),\n    payment_type: pick(\"payment_type\", \"Payment Type\"),\n    start_date: cleanDate(pick(\"start_date\", \"Start Date\")),\n    end_date: cleanDate(pick(\"end_date\", \"End Date\")),\n    scheme_credit_method: pick(\"scheme_credit_method\", \"Scheme Credit Method\"),\n    gold_rate_at_payment: cleanNumber(pick(\"gold_rate_at_payment\", \"Gold Rate At Payment\")),\n    wastage_free_percent: cleanNumber(pick(\"wastage_free_percent\", \"Wastage Free Percent\")),\n    maturity_wait_months: cleanNumber(pick(\"maturity_wait_months\", \"Maturity Wait Months\")),\n    receipt_or_account_number: pick(\"receipt_or_account_number\", \"Receipt Or Account Number\"),\n    is_active: yesNo(pick(\"is_active\", \"Is Active\")),\n    notes: pick(\"notes\", \"Notes\")\n  }\n}];"
+      },
+      "position": [
+        304,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "164a596b-4420-453a-996e-dd59bea1510f",
+      "name": "Append GoldChit Row",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "columns": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "scheme_name",
+              "id": "scheme_name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "jeweller_name",
+              "id": "jeweller_name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "branch",
+              "id": "branch",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "payment_type",
+              "id": "payment_type",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "start_date",
+              "id": "start_date",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "end_date",
+              "id": "end_date",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "scheme_credit_method",
+              "id": "scheme_credit_method",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "gold_rate_at_payment",
+              "id": "gold_rate_at_payment",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "wastage_free_percent",
+              "id": "wastage_free_percent",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "maturity_wait_months",
+              "id": "maturity_wait_months",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "receipt_or_account_number",
+              "id": "receipt_or_account_number",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "is_active",
+              "id": "is_active",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "display": true,
+              "displayName": "notes",
+              "id": "notes",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "branch": "={{ $json.branch }}",
+            "end_date": "={{ $json.end_date }}",
+            "gold_rate_at_payment": "={{ $json.gold_rate_at_payment }}",
+            "is_active": "={{ $json.is_active }}",
+            "jeweller_name": "={{ $json.jeweller_name }}",
+            "maturity_wait_months": "={{ $json.maturity_wait_months }}",
+            "notes": "={{ $json.notes }}",
+            "payment_type": "={{ $json.payment_type }}",
+            "receipt_or_account_number": "={{ $json.receipt_or_account_number }}",
+            "scheme_credit_method": "={{ $json.scheme_credit_method }}",
+            "scheme_name": "={{ $json.scheme_name }}",
+            "start_date": "={{ $json.start_date }}",
+            "wastage_free_percent": "={{ $json.wastage_free_percent }}"
+          }
+        },
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.spreadsheet_id }}"
+        },
+        "operation": "append",
+        "options": {},
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "GoldChit"
+        }
+      },
+      "position": [
+        624,
+        0
+      ],
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7
+    }
+  ],
+  "connections": {
+    "Fillout Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Normalize GoldChit Payload",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Normalize GoldChit Payload": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Append GoldChit Row",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "versionId": "820a70a5-c714-4015-a877-fb65b343bb99",
+  "id": "4IsSVV16aRmdGJ3U",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

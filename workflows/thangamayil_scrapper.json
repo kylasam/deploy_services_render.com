@@ -1,0 +1,201 @@
+{
+  "name": "thangamayil_scrapper",
+  "nodes": [
+    {
+      "id": "47e0eede-2075-4e08-9d7c-78a9fcf8487f",
+      "name": "Schedule Trigger",
+      "notes": "Every hour Run",
+      "notesInFlow": true,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2
+    },
+    {
+      "id": "fb6dcdcb-d9c9-4559-b741-696bfb82ae23",
+      "name": "Fetch Thangamayil Page",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.5"
+            },
+            {
+              "name": "Referer",
+              "value": "https://www.google.com/"
+            },
+            {
+              "name": "DNT",
+              "value": "1"
+            },
+            {
+              "name": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "name": "Upgrade-Insecure-Requests",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 10000
+        },
+        "sendHeaders": true,
+        "url": "https://www.thangamayil.com/scheme/index/rateshistory/"
+      },
+      "position": [
+        224,
+        0
+      ],
+      "retryOnFail": true,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "ca1fe912-85df-4ca7-b9d2-9cae6d581dfd",
+      "name": "Parse Gold Rate HTML",
+      "parameters": {
+        "jsCode": "const html = $input.first().json.data;\n\nfunction cleanNumber(str) {\n  return parseFloat(\n    String(str || '')\n      .replace(/<[^>]+>/g, '')\n      .replace(/₹|,/g, '')\n      .trim()\n  );\n}\n\nfunction getRate(label) {\n  const re = new RegExp(\n    label + String.raw`[\\s\\S]*?₹\\s*([0-9,]+(?:\\.[0-9]+)?)`,\n    'i'\n  );\n\n  const m = html.match(re);\n  if (!m) throw new Error(`Could not find rate for ${label}`);\n\n  const value = cleanNumber(m[1]);\n  if (isNaN(value)) {\n    throw new Error(`Invalid numeric value for ${label}: ${m[1]}`);\n  }\n\n  return value;\n}\n\nfunction getLastUpdated() {\n  const m = html.match(\n    /Last updated Time\\s*:\\s*<span[^>]*class=[\"'][^\"']*updated-time[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/span>/i\n  );\n\n  if (m) {\n    return m[1].replace(/<[^>]+>/g, '').trim();\n  }\n\n  const fallback = html.match(/Last updated Time\\s*[-:]?\\s*([\\d/]+\\s+\\d{1,2}:\\d{2}\\s+[AP]M)/i);\n  if (fallback) return fallback[1].trim();\n\n  throw new Error('Could not find last updated timestamp');\n}\n\nfunction parseIndianDt(str) {\n  const m = str.match(/(\\d{2})\\/(\\d{2})\\/(\\d{2})\\s+(\\d{1,2}):(\\d{2})\\s+(AM|PM)/i);\n  if (!m) return str;\n\n  let [, dd, mo, yy, hh, mm, ampm] = m;\n  hh = parseInt(hh, 10);\n\n  if (ampm.toUpperCase() === 'PM' && hh !== 12) hh += 12;\n  if (ampm.toUpperCase() === 'AM' && hh === 12) hh = 0;\n\n  return `20${yy}-${mo}-${dd}T${String(hh).padStart(2, '0')}:${mm}:00`;\n}\n\nconst lastUpdatedRaw = getLastUpdated();\n\nconst g_price_22k = getRate('GOLD RATE 22k');\nconst g_price_24k = getRate('GOLD RATE 24k');\nconst g_price_18k = getRate('GOLD RATE 18k');\nconst silver_price = getRate('SILVER RATE');\n\nconst now = new Date();\nconst edw_publn_id = now.toISOString().slice(0, 16).replace('T', ' ');\n\nreturn [\n  {\n    json: {\n      web_last_updated_ts: parseIndianDt(lastUpdatedRaw),\n      g_price_18k_gram: g_price_18k,\n      g_price_22k_gram: g_price_22k,\n      g_price_24k_gram: g_price_24k,\n      silver_price_gram: silver_price,\n      edw_publn_id\n    }\n  }\n];"
+      },
+      "position": [
+        448,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "23c6412e-3572-4a43-8425-7c71c09ea175",
+      "name": "Validate Data",
+      "parameters": {
+        "jsCode": "// Validate all required fields are present and numeric\nconst d = $input.first().json;\nconst required = ['web_last_updated_ts','g_price_18k_gram','g_price_22k_gram','g_price_24k_gram','silver_price_gram','edw_publn_id'];\n\nfor (const field of required) {\n  if (d[field] === undefined || d[field] === null || d[field] === '') {\n    throw new Error(`Validation failed: missing field \"${field}\"`);\n  }\n}\n\nconst numericFields = ['g_price_18k_gram','g_price_22k_gram','g_price_24k_gram','silver_price_gram'];\nfor (const field of numericFields) {\n  if (isNaN(d[field])) {\n    throw new Error(`Validation failed: \"${field}\" is not a number → value: ${d[field]}`);\n  }\n  if (d[field] <= 0) {\n    throw new Error(`Validation failed: \"${field}\" must be > 0 → value: ${d[field]}`);\n  }\n}\n\nreturn $input.all();\n"
+      },
+      "position": [
+        672,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "14bed5d1-a32d-449e-b1da-09875d846410",
+      "name": "Insert to BigQuery",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "datasetId": {
+          "__rl": true,
+          "mode": "expression",
+          "value": "=public"
+        },
+        "operation": "insert",
+        "options": {},
+        "projectId": {
+          "__rl": true,
+          "mode": "expression",
+          "value": "=wealthyo"
+        },
+        "tableId": {
+          "__rl": true,
+          "mode": "value",
+          "value": "gold_rates"
+        }
+      },
+      "position": [
+        880,
+        0
+      ],
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Fetch Thangamayil Page": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Parse Gold Rate HTML",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Parse Gold Rate HTML": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Validate Data",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Thangamayil Page",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Validate Data": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Insert to BigQuery",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "versionId": "61cfa715-cb58-479f-94e3-32ddaf58bcaa",
+  "id": "4QU7KiJKPWBXZ3U5",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

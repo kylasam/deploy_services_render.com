@@ -1,0 +1,637 @@
+{
+  "name": "Wealthyo - Autonomous Social Multi-Platform Publisher & Ticket Lifecycle",
+  "nodes": [
+    {
+      "id": "f6d01e75-f6ec-4e9b-81f3-7317a59a8d09",
+      "name": "Schedule: Daily Peak Hours (1:00 PM & 6:00 PM IST)",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "expression": "30 7,12 * * *",
+              "field": "cronExpression"
+            }
+          ]
+        }
+      },
+      "position": [
+        -2064,
+        208
+      ],
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "9fa18b66-f99a-4b4d-b285-b302e1270fdf",
+      "name": "Google Drive: Scan Calendar Subfolders",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1_H8g70Id1A4HEJO6EsX38jLxHRBfSvTQ"
+          }
+        },
+        "options": {},
+        "resource": "fileFolder"
+      },
+      "position": [
+        -1840,
+        208
+      ],
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3
+    },
+    {
+      "id": "7b4aabc5-65df-4769-901a-dc30d1656026",
+      "name": "Resolve Today's Scheduled Calendar Folder",
+      "parameters": {
+        "jsCode": "// Compute Today's Date in IST (Asia/Kolkata)\nconst now = new Date();\nconst istOffset = 5.5 * 60 * 60 * 1000;\nconst istDate = new Date(now.getTime() + istOffset);\nconst todayStr = istDate.toISOString().slice(0, 10);\n\nconst folders = $input.all().map(item => item.json);\n\n// Match folder starting with today's date YYYY-MM-DD\nlet target = folders.find(f => f.name && f.name.startsWith(todayStr));\n\nif (!target) {\n  // Fallback to closest scheduled future or active folder\n  const dated = folders\n    .filter(f => f.name && /^\\d{4}-\\d{2}-\\d{2}/.test(f.name))\n    .sort((a, b) => a.name.localeCompare(b.name));\n  target = dated.find(f => f.name >= todayStr) || dated[0];\n}\n\nif (!target) {\n  throw new Error(`No scheduled content folder found in Google Drive for ${todayStr}`);\n}\n\nreturn [{\n  json: {\n    today_date: todayStr,\n    scheduled_folder_id: target.id,\n    scheduled_folder_name: target.name\n  }\n}];"
+      },
+      "position": [
+        -1616,
+        208
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "86395acc-01c4-4262-873e-77659cd97e4a",
+      "name": "Google Drive: List Assets in Today's Folder",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.scheduled_folder_id }}"
+          }
+        },
+        "options": {},
+        "resource": "fileFolder",
+        "returnAll": true
+      },
+      "position": [
+        -1408,
+        208
+      ],
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3
+    },
+    {
+      "id": "703ee7f1-2dc6-4cee-a2eb-5c219b81dfec",
+      "name": "Extract Asset File IDs & Video Staging URL",
+      "parameters": {
+        "jsCode": "const files = $input.all().map(item => item.json);\nconst folderInfo = $('Resolve Today\\'s Scheduled Calendar Folder').first().json;\n\nconst metaFile = files.find(f => f.name && f.name.includes('meta_instagram_facebook'));\nconst blogFile = files.find(f => f.name && f.name.includes('blog_article'));\nconst ytFile = files.find(f => f.name && f.name.includes('youtube_shorts'));\nconst videoFile = files.find(f => f.name && (f.name.endsWith('.mp4') || f.mimeType === 'video/mp4'));\n\nconst videoName = videoFile ? videoFile.name : 'gemini_generated_video_with_scannable_qr.mp4';\nconst cleanDate = folderInfo.scheduled_folder_name.slice(0, 10);\n\n// GCS Hosted Public Staging URL for Meta Graph ingestion\nconst gcsPublicUrl = `https://storage.googleapis.com/wealthyo-social-media-assets/reels/${cleanDate}_${videoName}`;\n\nreturn [{\n  json: {\n    ...folderInfo,\n    meta_file_id: metaFile ? metaFile.id : null,\n    blog_file_id: blogFile ? blogFile.id : null,\n    youtube_file_id: ytFile ? ytFile.id : null,\n    video_file_id: videoFile ? videoFile.id : null,\n    video_file_name: videoName,\n    video_public_url: gcsPublicUrl\n  }\n}];"
+      },
+      "position": [
+        -1184,
+        208
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "fc8d8d8f-77c2-44eb-a8a3-dcdd0eb2e895",
+      "name": "Google Drive: Download Meta Caption Text",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.meta_file_id }}"
+        },
+        "operation": "download",
+        "options": {}
+      },
+      "position": [
+        -960,
+        112
+      ],
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "d8e1f7ad-5f8d-4f8f-bc00-bcfaa701df4a",
+      "name": "Google Drive: Download Blog Markdown",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Extract Asset File IDs & Video Staging URL').item.json.blog_file_id }}"
+        },
+        "operation": "download",
+        "options": {}
+      },
+      "position": [
+        -960,
+        304
+      ],
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3
+    },
+    {
+      "id": "ad18421c-a74f-46c2-bb26-a324f2529a1c",
+      "name": "Pre-Flight Content Quality Scorer & Sanitizer",
+      "parameters": {
+        "jsCode": "const metaBinary = $('Google Drive: Download Meta Caption Text').first().binary?.data;\nconst blogBinary = $('Google Drive: Download Blog Markdown').first().binary?.data;\nconst baseInfo = $('Extract Asset File IDs & Video Staging URL').first().json;\n\nlet caption = '';\nif (metaBinary && metaBinary.data) {\n  caption = Buffer.from(metaBinary.data, 'base64').toString('utf-8').trim();\n}\n\nlet blogContent = '';\nif (blogBinary && blogBinary.data) {\n  blogContent = Buffer.from(blogBinary.data, 'base64').toString('utf-8').trim();\n}\n\n// 1. Parse Blog Markdown (Strip YAML frontmatter & extract title)\nlet title = baseInfo.scheduled_folder_name.replace(/^\\d{4}-\\d{2}-\\d{2}_?/, '').replace(/_/g, ' ');\ntitle = title.charAt(0).toUpperCase() + title.slice(1);\n\nconst lines = blogContent.split('\\n');\nfor (const line of lines) {\n  if (line.startsWith('title:')) {\n    title = line.replace('title:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n}\nconst cleanBlogMarkdown = blogContent.replace(/^---[\\s\\S]*?---\\s*/, '').trim();\n\n// 2. Pre-Flight Content Scoring (>80 threshold)\nlet score = 0;\nconst hook = caption.split('\\n')[0] || '';\n\n// Hook Urgency / Numbers Check (25 pts)\nif (hook.length > 15 && (/\\?|₹|!|\\d+%|ALERT|trap/i.test(hook))) score += 25;\nelse score += 10;\n\n// Caption Length & Depth (20 pts)\nif (caption.length > 200) score += 20;\nelse score += 10;\n\n// Wealthyo CTA & Domain Relevance (20 pts)\nif (/wealthyo\\.in|wealthyo/i.test(caption)) score += 20;\n\n// Interactive Comment / Early Access CTA (15 pts)\nif (/comment|claim|waitlist|bio|👇/i.test(caption)) score += 15;\n\n// Hashtag Optimization (20 pts)\nconst hashtags = (caption.match(/#[a-zA-Z0-9_]+/g) || []);\nif (hashtags.length >= 5) score += 20;\nelse if (hashtags.length >= 3) score += 10;\n\nreturn [{\n  json: {\n    ...baseInfo,\n    title: title,\n    caption: caption,\n    hook: hook,\n    hashtags: hashtags,\n    blog_title: title,\n    blog_clean_markdown: cleanBlogMarkdown,\n    preflight_score: score,\n    passed: score >= 80\n  }\n}];"
+      },
+      "position": [
+        -720,
+        208
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "2b931005-e35f-4b80-90d2-06d358d9e11f",
+      "name": "Passes Pre-Flight Quality Check (Score >= 80)?",
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.passed }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "position": [
+        -480,
+        208
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1
+    },
+    {
+      "id": "458491c5-554e-4e0c-9226-8afc5d098bf6",
+      "name": "ClickUp: Create Video Calendar Task",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "YOUR_CLICKUP_API_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={\n  \"name\": \"🚀 [Autonomous] \" + $json.title + \" (\" + $json.today_date + \")\",\n  \"description\": \"Scheduled Release: \" + $json.today_date + \"\\nPre-Flight Quality Score: \" + $json.preflight_score + \"/100\\n\\nHook: \" + $json.hook + \"\\n\\nVideo Asset Staging: \" + $json.video_public_url,\n  \"status\": \"in progress\",\n  \"tags\": [\"autonomous\", \"reels\", \"social-sync\"]\n}",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://api.clickup.com/api/v2/list/901222579950/task"
+      },
+      "position": [
+        -240,
+        112
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "bc060af0-0ab0-43c8-8465-ce97ba969929",
+      "name": "Instagram: Init Reel Container",
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "REELS"
+            },
+            {
+              "name": "video_url",
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.video_public_url }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.caption }}"
+            },
+            {
+              "name": "access_token",
+              "value": "EAAXBQ..."
+            }
+          ]
+        },
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "url": "https://graph.facebook.com/v19.0/17841422678930802/media"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "ed602118-31ed-4c4b-b91f-d8ba30ff3ee0",
+      "name": "Wait for Meta Video Transcoding (30s)",
+      "parameters": {
+        "amount": 30
+      },
+      "position": [
+        224,
+        -112
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "54c7386b-d02d-49ae-8876-d4f6ae3e5510"
+    },
+    {
+      "id": "923efb2c-43cc-4f0a-bf8e-7072f72367cf",
+      "name": "Instagram: Publish Reel Live",
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $('Instagram: Init Reel Container').item.json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "EAAXBQ..."
+            }
+          ]
+        },
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "url": "https://graph.facebook.com/v19.0/17841422678930802/media_publish"
+      },
+      "position": [
+        448,
+        0
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "e7809282-1eb8-444f-acd1-3d7d19611c85",
+      "name": "Facebook: Publish Video Reel",
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file_url",
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.video_public_url }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.title }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.caption }}"
+            },
+            {
+              "name": "access_token",
+              "value": "EAAXBQ..."
+            }
+          ]
+        },
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "url": "https://graph.facebook.com/v19.0/1377318152130180/videos"
+      },
+      "position": [
+        0,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "99827aaf-27cd-4786-af90-d8a6ad16976f",
+      "name": "Dev.to: Publish Canonical Blog Article",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "DEVTO_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "WealthyoPublisher/1.0"
+            }
+          ]
+        },
+        "jsonBody": "={\n  \"article\": {\n    \"title\": $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.blog_title,\n    \"published\": true,\n    \"body_markdown\": $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.blog_clean_markdown + \"\\n\\n---\\n*Originally published on [Wealthyo](https://wealthyo.in).*\",\n    \"tags\": [\"personalfinance\", \"wealth\", \"investing\", \"india\"],\n    \"canonical_url\": \"https://wealthyo.in/blog\"\n  }\n}",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://dev.to/api/articles"
+      },
+      "position": [
+        0,
+        320
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "5aa5b81d-a6c0-4452-95e8-878f8b6f53d6",
+      "name": "ClickUp: Attach Live URLs & Comments",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "YOUR_CLICKUP_API_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={\n  \"comment_text\": \"### 🎉 Autonomous Multi-Platform Publishing Completed!\\n\\n- 📸 **Instagram Reel ID**: \" + ($('Instagram: Publish Reel Live').item.json?.id || 'Published') + \"\\n- 👥 **Facebook Reel Video ID**: \" + ($('Facebook: Publish Video Reel').item.json?.id || 'Published') + \"\\n- ✍️ **Dev.to Article**: \" + ($('Dev.to: Publish Canonical Blog Article').item.json?.url || 'Published') + \"\\n\\nAssets read autonomously from Google Drive calendar.\"\n}",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "=https://api.clickup.com/api/v2/task/{{ $('ClickUp: Create Video Calendar Task').item.json.id }}/comment"
+      },
+      "position": [
+        688,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "662cf0da-7266-4791-9049-1e13f7583650",
+      "name": "ClickUp: Mark Task Done",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "YOUR_CLICKUP_API_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "{\n  \"status\": \"done\"\n}",
+        "method": "PUT",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "=https://api.clickup.com/api/v2/task/{{ $('ClickUp: Create Video Calendar Task').item.json.id }}"
+      },
+      "position": [
+        912,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    }
+  ],
+  "connections": {
+    "ClickUp: Attach Live URLs & Comments": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "ClickUp: Mark Task Done",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "ClickUp: Create Video Calendar Task": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Instagram: Init Reel Container",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Facebook: Publish Video Reel",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Dev.to: Publish Canonical Blog Article",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Dev.to: Publish Canonical Blog Article": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "ClickUp: Attach Live URLs & Comments",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Extract Asset File IDs & Video Staging URL": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Google Drive: Download Meta Caption Text",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Google Drive: Download Blog Markdown",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Facebook: Publish Video Reel": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "ClickUp: Attach Live URLs & Comments",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Google Drive: Download Blog Markdown": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Pre-Flight Content Quality Scorer & Sanitizer",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Google Drive: Download Meta Caption Text": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Pre-Flight Content Quality Scorer & Sanitizer",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Google Drive: List Assets in Today's Folder": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Extract Asset File IDs & Video Staging URL",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Google Drive: Scan Calendar Subfolders": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Resolve Today's Scheduled Calendar Folder",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Instagram: Init Reel Container": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Wait for Meta Video Transcoding (30s)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Instagram: Publish Reel Live": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "ClickUp: Attach Live URLs & Comments",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Passes Pre-Flight Quality Check (Score >= 80)?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "ClickUp: Create Video Calendar Task",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Pre-Flight Content Quality Scorer & Sanitizer": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Passes Pre-Flight Quality Check (Score >= 80)?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Resolve Today's Scheduled Calendar Folder": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Google Drive: List Assets in Today's Folder",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Schedule: Daily Peak Hours (1:00 PM & 6:00 PM IST)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Google Drive: Scan Calendar Subfolders",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Wait for Meta Video Transcoding (30s)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Instagram: Publish Reel Live",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "binaryMode": "separate",
+    "executionOrder": "v1"
+  },
+  "versionId": "f3c6ccd3-0af5-4d81-95ee-1b6bbcc5db32",
+  "id": "qaQgyUFzF4mWhibr",
+  "meta": null,
+  "tags": []
+}

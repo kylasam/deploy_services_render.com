@@ -1,0 +1,82 @@
+{
+  "name": "users_onboarding",
+  "nodes": [
+    {
+      "id": "6c6e0875-bf44-4784-8781-2805a95ddcd2",
+      "name": "When clicking ‘Execute workflow’",
+      "parameters": {},
+      "position": [
+        -496,
+        -48
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "PWFRJ8GkzPw115xh",
+          "name": "Google Service Account account"
+        }
+      },
+      "id": "f594891b-c2c1-452f-a9af-e975f4d264c4",
+      "name": "Copy file",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "driveId": {
+          "__rl": true,
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive",
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "12hV57J89qI0W0FEW1b9Cb-htVr6ff1OTUwPakwLUmBk"
+        },
+        "folderId": {
+          "__rl": true,
+          "cachedResultName": "/ (Root folder)",
+          "cachedResultUrl": "https://drive.google.com/drive",
+          "mode": "list",
+          "value": "root"
+        },
+        "name": "investment_templates",
+        "operation": "copy",
+        "options": {},
+        "sameFolder": false
+      },
+      "position": [
+        -288,
+        -48
+      ],
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Copy file",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "versionId": "64854554-b821-4848-9eab-a8fb3e70b13c",
+  "id": "gowUjuYROwNknkvS",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

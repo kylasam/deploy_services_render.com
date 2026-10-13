@@ -1,0 +1,70 @@
+{
+  "name": "test",
+  "nodes": [
+    {
+      "id": "1f6d0336-1046-4b74-a0b2-11b7d8634615",
+      "name": "When clicking ‘Execute workflow’",
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "43570a09-69d1-41f0-8b11-ed6d2c790891",
+      "name": "Get row(s) in sheet",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/1iXzawWVEr2VlCXmFWpNKxOap5RFjKvth-XLKoM48iMw/edit?gid=1939538682#gid=1939538682"
+        },
+        "options": {},
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Locker"
+        }
+      },
+      "position": [
+        208,
+        0
+      ],
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Get row(s) in sheet",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "versionId": "b20687c1-d25c-46a3-a667-c488a73a678b",
+  "id": "jeOyHUxkwoSHAXUV",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

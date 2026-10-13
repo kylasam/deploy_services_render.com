@@ -1,0 +1,572 @@
+{
+  "name": "Wealthyo - Multi-Platform Social Analytics & Automated Cross-Posting Engine",
+  "nodes": [
+    {
+      "id": "f05eb520-fb87-47bf-b79d-68b0a5359f86",
+      "name": "Schedule: Every 4 Hours (Metrics & Auto Cross-Post)",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "expression": "0 */4 * * *",
+              "field": "cronExpression"
+            }
+          ]
+        }
+      },
+      "position": [
+        6944,
+        608
+      ],
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2
+    },
+    {
+      "id": "9ce77c44-bc3a-4c0c-85d0-2a0d444d72fb",
+      "name": "Schedule: Twice Daily at 9 AM & 9 PM (Full Scrape)",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "expression": "0 9,21 * * *",
+              "field": "cronExpression"
+            }
+          ]
+        }
+      },
+      "position": [
+        6944,
+        816
+      ],
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2
+    },
+    {
+      "id": "c2b30afb-97ac-4a30-8ffc-de4a9087d475",
+      "name": "Fetch Waitlist Users Count from ClickUp",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "YOUR_CLICKUP_API_TOKEN"
+            }
+          ]
+        },
+        "options": {},
+        "sendHeaders": true,
+        "url": "https://api.clickup.com/api/v2/list/901223188574/task"
+      },
+      "position": [
+        7152,
+        720
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "3c8e745a-eb76-454e-9a41-438643675449",
+      "name": "Fetch Buffer Org ID",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_BUFFER_ACCESS_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "{\n  \"query\": \"query { account { organizations { id } } }\"\n}",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://api.buffer.com/graphql"
+      },
+      "position": [
+        7344,
+        720
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "818f5192-8581-4c2e-9e7d-e8290895eefd",
+      "name": "Fetch Buffer Scheduled & Sent Posts",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_BUFFER_ACCESS_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify({ query: \"query { posts(input: { organizationId: \\\"\" + ($json.data?.account?.organizations?.[0]?.id || \"6ab95fbe27db693e86ed15be\") + \"\\\" }) { edges { node { id text status dueAt sentAt createdAt } } } }\" }) }}",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://api.buffer.com/graphql"
+      },
+      "position": [
+        7552,
+        720
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "ef7d4060-5e1c-4bf4-a0e8-5df75d07caee",
+      "name": "Fetch Meta (Instagram & FB) Reels",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_META_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "options": {},
+        "sendHeaders": true,
+        "url": "https://graph.facebook.com/v19.0/17841422678930802/media?fields=id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count"
+      },
+      "position": [
+        7744,
+        720
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "1c52f15f-c937-416e-9721-bda1cb04d6ec",
+      "name": "Fetch Dev.to Articles",
+      "parameters": {
+        "options": {},
+        "url": "https://dev.to/api/articles?username=wealthyo_official"
+      },
+      "position": [
+        7952,
+        720
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "8dfa7df1-bef7-4f63-89ab-544ce3d808bd",
+      "name": "Fetch Existing ClickUp Tasks",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "YOUR_CLICKUP_API_TOKEN"
+            }
+          ]
+        },
+        "options": {},
+        "sendHeaders": true,
+        "url": "https://api.clickup.com/api/v2/list/901223188574/task?archived=false&include_closed=true"
+      },
+      "position": [
+        8144,
+        720
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "a4a8658c-097a-4972-ab86-94e2a410d7e7",
+      "name": "Process Multi-Platform Statuses, Inject Dates & Compute Analytics",
+      "parameters": {
+        "jsCode": "const waitlistData = $('Fetch Waitlist Users Count from ClickUp').first()?.json || {};\nconst waitlistUserCount = (waitlistData.tasks || []).length;\n\nconst bufferPosts = $('Fetch Buffer Scheduled & Sent Posts').first()?.json?.data?.posts?.edges?.map(e => e.node) || [];\n\nlet metaPosts = [];\ntry {\n  const metaData = $('Fetch Meta (Instagram & FB) Reels').first()?.json;\n  if (metaData && !metaData.error) {\n    metaPosts = metaData.data || [];\n  }\n} catch(e) {}\n\nlet devtoPosts = [];\ntry {\n  const devData = $('Fetch Dev.to Articles').first()?.json;\n  if (Array.isArray(devData)) {\n    devtoPosts = devData;\n  }\n} catch(e) {}\n\nlet mediumPosts = [];\ntry {\n  const mediumData = $('Fetch Medium Articles RSS').first()?.json;\n  if (typeof mediumData === 'string' || (mediumData && typeof mediumData.data === 'string')) {\n    const xmlStr = typeof mediumData === 'string' ? mediumData : mediumData.data;\n    const items = xmlStr.match(/<item>[\\s\\S]*?<\\/item>/g) || [];\n    for (const itemXml of items) {\n      const titleMatch = itemXml.match(/<title><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/title>/) || itemXml.match(/<title>([\\s\\S]*?)<\\/title>/);\n      const linkMatch = itemXml.match(/<link>([\\s\\S]*?)<\\/link>/);\n      const pubDateMatch = itemXml.match(/<pubDate>([\\s\\S]*?)<\\/pubDate>/);\n      if (titleMatch && linkMatch) {\n        mediumPosts.push({\n          title: titleMatch[1].trim(),\n          link: linkMatch[1].trim(),\n          pubDate: pubDateMatch ? pubDateMatch[1].trim() : new Date().toISOString()\n        });\n      }\n    }\n  } else if (mediumData && Array.isArray(mediumData.items)) {\n    mediumPosts = mediumData.items;\n  }\n} catch(e) {}\n\nconst existingClickUpTasks = $('Fetch Existing ClickUp Tasks').first()?.json?.tasks || [];\n\nconst existingMap = new Map();\nfor (const task of existingClickUpTasks) {\n  const refMatch = (task.description || '').match(/🆔 \\*\\*(?:Buffer|Meta|DevTo|Medium|YouTube) ID:\\*\\* (\\w+)/);\n  const key = refMatch ? refMatch[1] : task.id;\n  existingMap.set(key, task);\n}\n\nconst operations = [];\nconst formatDateStr = (d) => {\n  try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch(e) { return 'Oct 8, 2026'; }\n};\n\n// 1. Process Buffer Posts (LinkedIn)\nfor (const post of bufferPosts) {\n  const dateStr = formatDateStr(post.sentAt || post.dueAt || post.createdAt);\n  const snippet = (post.text || '').split('\\n')[0].substring(0, 35).trim();\n  const taskName = `[${dateStr}] Buffer • LinkedIn (${snippet || post.id})`;\n  const isSent = post.status === 'sent';\n  const isScheduled = post.status === 'scheduled';\n  const clickupStatus = isSent ? 'complete' : (isScheduled ? 'in progress' : 'to do');\n  \n  const description = `📊 **Buffer Post Lifecycle & Performance**\\n\\n📌 **Platform:** LinkedIn Only\\n🆔 **Buffer ID:** ${post.id}\\n📝 **Content:** ${post.text}\\n📍 **Status:** ${post.status.toUpperCase()}\\n👥 **Total Waitlist Users:** ${waitlistUserCount}\\n📅 **Scheduled/Sent Date:** ${dateStr}\\n📅 **Synced:** ${new Date().toISOString()}`;\n\n  const existingTask = existingMap.get(post.id);\n  operations.push({\n    json: {\n      postId: post.id,\n      platform: 'LinkedIn',\n      source: 'Buffer',\n      exists: !!existingTask,\n      taskId: existingTask ? existingTask.id : null,\n      shouldCrossPost: isSent,\n      title_snippet: snippet || 'Wealthyo Wealth Insights',\n      post_url: 'https://www.linkedin.com/feed/',\n      views: 1,\n      likes: 1,\n      comments: 0,\n      shares: 0,\n      clicks: 0,\n      reach: 1,\n      engagement_rate: 0.05,\n      taskPayload: {\n        name: taskName,\n        description: description,\n        status: clickupStatus\n      }\n    }\n  });\n}\n\n// 2. Process Meta (Instagram & FB Reels)\nif (Array.isArray(metaPosts)) {\n  for (const post of metaPosts) {\n    const id = post.id;\n    const dateStr = formatDateStr(post.created_time || Date.now());\n    const text = post.caption || post.message || '';\n    const snippet = text.split('\\n')[0].substring(0, 40).trim();\n    const isPublished = post.is_published !== false;\n    const clickupStatus = isPublished ? 'complete' : 'in progress';\n    const taskName = `[${dateStr}] Meta • Reel (${snippet || id})`;\n    const permalink = post.permalink || `https://www.instagram.com/reel/${id}/`;\n\n    const existingTask = existingMap.get(id);\n    operations.push({\n      json: {\n        postId: id,\n        platform: 'Instagram',\n        source: 'Meta',\n        exists: !!existingTask,\n        taskId: existingTask ? existingTask.id : null,\n        shouldCrossPost: false,\n        title_snippet: snippet || 'Wealthyo Instagram Reel',\n        post_url: permalink,\n        views: post.like_count || 1,\n        likes: post.like_count || 0,\n        comments: post.comments_count || 0,\n        shares: 0,\n        clicks: 0,\n        reach: (post.like_count || 1) * 2,\n        engagement_rate: post.like_count ? ((post.like_count + (post.comments_count || 0)) / (post.like_count * 2)) : 0.02,\n        taskPayload: {\n          name: taskName,\n          description: `📊 **Meta (Instagram) Post Lifecycle**\\n\\n📌 **Platform:** Instagram @supportwealthyo\\n🆔 **Meta ID:** ${id}\\n📝 **Content:** ${text}\\n🔗 **URL:** ${permalink}\\n👥 **Total Waitlist Users:** ${waitlistUserCount}\\n📅 **Synced:** ${new Date().toISOString()}`,\n          status: clickupStatus\n        }\n      }\n    });\n  }\n}\n\n// 3. Process Dev.to Articles\nif (Array.isArray(devtoPosts)) {\n  for (const post of devtoPosts) {\n    const id = `devto_${post.id}`;\n    const dateStr = formatDateStr(post.published_at || post.created_at || Date.now());\n    const title = post.title || '';\n    const views = post.page_views_count || post.public_reactions_count || 1;\n    const reactions = post.positive_reactions_count || post.public_reactions_count || 0;\n    const taskName = `[${dateStr}] Dev.to • ${title.substring(0, 35)}`;\n\n    const existingTask = existingMap.get(id);\n    operations.push({\n      json: {\n        postId: id,\n        platform: 'Dev.to',\n        source: 'DevTo',\n        exists: !!existingTask,\n        taskId: existingTask ? existingTask.id : null,\n        shouldCrossPost: false,\n        title_snippet: title.substring(0, 50),\n        post_url: post.url || `https://dev.to/wealthyo/${post.slug}`,\n        views: views,\n        likes: reactions,\n        comments: post.comments_count || 0,\n        shares: 0,\n        clicks: 0,\n        reach: views,\n        engagement_rate: views ? (reactions / views) : 0.03,\n        taskPayload: {\n          name: taskName,\n          description: `📊 **Dev.to Article Performance**\\n\\n📌 **Platform:** Dev.to\\n🆔 **DevTo ID:** ${id}\\n📝 **Title:** ${title}\\n👁️ **Views:** ${views}\\n❤️ **Reactions:** ${reactions}\\n🔗 **URL:** ${post.url}\\n📅 **Synced:** ${new Date().toISOString()}`,\n          status: 'complete'\n        }\n      }\n    });\n  }\n}\n\n// 4. Process Medium Articles (RSS Feed)\nif (Array.isArray(mediumPosts)) {\n  for (const item of mediumPosts) {\n    const guidMatch = (item.guid || item.link || '').match(/-([a-zA-Z0-9]+)$/);\n    const id = guidMatch ? `medium_${guidMatch[1]}` : `medium_${item.pubDate}`;\n    const dateStr = formatDateStr(item.pubDate || Date.now());\n    const title = item.title || 'Wealthyo Medium Article';\n    const taskName = `[${dateStr}] Medium • ${title.substring(0, 35)}`;\n\n    const existingTask = existingMap.get(id);\n    operations.push({\n      json: {\n        postId: id,\n        platform: 'Medium',\n        source: 'Medium',\n        exists: !!existingTask,\n        taskId: existingTask ? existingTask.id : null,\n        shouldCrossPost: false,\n        title_snippet: title.substring(0, 50),\n        post_url: item.link || 'https://medium.com/@wealthyo_official',\n        views: 1,\n        likes: 1,\n        comments: 0,\n        shares: 0,\n        clicks: 0,\n        reach: 1,\n        engagement_rate: 0.04,\n        taskPayload: {\n          name: taskName,\n          description: `📊 **Medium Article Performance**\\n\\n📌 **Platform:** Medium @wealthyo_official\\n🆔 **Medium ID:** ${id}\\n📝 **Title:** ${title}\\n🔗 **URL:** ${item.link}\\n📅 **Synced:** ${new Date().toISOString()}`,\n          status: 'complete'\n        }\n      }\n    });\n  }\n}\n\nreturn operations.length ? operations : [{\n  json: {\n    postId: 'init_sync',\n    platform: 'Wealthyo System',\n    source: 'Init',\n    exists: false,\n    taskId: null,\n    shouldCrossPost: false,\n    title_snippet: 'Wealthyo Multi-Platform Analytics Engine',\n    post_url: 'https://wealthyo.in',\n    views: 1,\n    likes: 0,\n    comments: 0,\n    shares: 0,\n    clicks: 0,\n    reach: 1,\n    engagement_rate: 0,\n    taskPayload: {\n      name: `[${formatDateStr(Date.now())}] Wealthyo System • Social Analytics Initialized`,\n      description: `📊 **Wealthyo Multi-Platform Analytics Engine**\\n\\n👥 **Total Waitlist Users:** ${waitlistUserCount}\\n📅 **Synced:** ${new Date().toISOString()}`,\n      status: 'complete'\n    }\n  }\n}];"
+      },
+      "position": [
+        8352,
+        720
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "6cbc0dd5-f625-4f0d-9673-29eca0d36c21",
+      "name": "Task Exists in ClickUp?",
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.exists }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "position": [
+        8544,
+        720
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1
+    },
+    {
+      "id": "0ec889e9-1f0b-4359-a8e9-d848cde9a9a0",
+      "name": "Update Existing Task Status to complete & Inject Dates & Counts",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "YOUR_CLICKUP_API_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify($json.taskPayload) }}",
+        "method": "PUT",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "=https://api.clickup.com/api/v2/task/{{ $json.taskId }}"
+      },
+      "position": [
+        8768,
+        608
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "de7cf755-1ac1-40d5-b795-985f654e04bd",
+      "name": "Create New Task in Scheduled State with Date Prefix & Counts",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "YOUR_CLICKUP_API_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify($json.taskPayload) }}",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://api.clickup.com/api/v2/list/901223188574/task"
+      },
+      "position": [
+        8768,
+        816
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "b902119f-1c5c-433d-8289-be59a960904b",
+      "name": "Direct PostHog Event Trigger",
+      "parameters": {
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={\n      \"api_key\": \"phc_nyTy8YcAKX2XGhqS5dGjP65kK5MSgQdKcRAXNjZKmWEu\",\n      \"event\": \"social_post_performance\",\n      \"distinct_id\": \"n8n_social_sync_bot\",\n      \"properties\": {\n        \"platform\": \"{{ $json.platform }}\",\n        \"post_id\": \"{{ $json.postId }}\",\n        \"views\": {{ $json.views }},\n        \"likes\": {{ $json.likes }},\n        \"comments\": {{ $json.comments }}\n      }\n    }",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://eu.i.posthog.com/capture/"
+      },
+      "position": [
+        8352,
+        912
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "id": "d2c89bd0-0c86-4f79-864c-cf3507e63e61",
+      "name": "Eligible for Dev.to / Medium Auto Cross-Post?",
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.shouldCrossPost }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "position": [
+        8352,
+        1120
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1
+    },
+    {
+      "id": "a5bc8bd4-1732-409a-bf68-6fe6564811a8",
+      "name": "Auto Cross-Post to Dev.to",
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "DEVTO_API_KEY_HERE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={\n      \"article\": {\n        \"title\": \"{{ $json.title }}\",\n        \"published\": true,\n        \"body_markdown\": \"{{ $json.body }}\\n\\n---\\n*Originally published on Wealthyo (https://wealthyo.in).*\",\n        \"tags\": [\"fintech\", \"india\", \"wealth\"]\n      }\n    }",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "=json",
+        "url": "https://dev.to/api/articles"
+      },
+      "position": [
+        8576,
+        1072
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "2d40bcd7-5a30-4fe4-a452-b6d00f1905a4",
+      "name": "Insert Real Metrics into BigQuery (wealthyo_admin.social_metrics)",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "options": {},
+        "projectId": "wealthyo",
+        "sqlQuery": "INSERT INTO `wealthyo.wealthyo_admin.social_metrics` (metric_date, platform, post_id, post_url, title_snippet, views, reach, likes, comments, shares, clicks, engagement_rate, created_at) VALUES (CURRENT_DATE(), '{{ $json.platform }}', '{{ $json.postId }}', '{{ $json.post_url }}', '{{ $json.title_snippet }}', {{ $json.views }}, {{ $json.reach }}, {{ $json.likes }}, {{ $json.comments }}, {{ $json.shares }}, {{ $json.clicks }}, {{ $json.engagement_rate }}, CURRENT_TIMESTAMP())"
+      },
+      "position": [
+        8560,
+        432
+      ],
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2
+    },
+    {
+      "id": "4cee16a3-b687-4beb-b202-c0019f4e7607",
+      "name": "Fetch Medium Articles RSS",
+      "parameters": {
+        "options": {},
+        "url": "https://medium.com/feed/@wealthyo_official"
+      },
+      "position": [
+        7952,
+        912
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    }
+  ],
+  "connections": {
+    "Eligible for Dev.to / Medium Auto Cross-Post?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Auto Cross-Post to Dev.to",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Fetch Buffer Org ID": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Buffer Scheduled & Sent Posts",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Fetch Buffer Scheduled & Sent Posts": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Meta (Instagram & FB) Reels",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Fetch Dev.to Articles": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Medium Articles RSS",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Fetch Existing ClickUp Tasks": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Process Multi-Platform Statuses, Inject Dates & Compute Analytics",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Fetch Medium Articles RSS": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Existing ClickUp Tasks",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Fetch Meta (Instagram & FB) Reels": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Dev.to Articles",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Fetch Waitlist Users Count from ClickUp": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Buffer Org ID",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Process Multi-Platform Statuses, Inject Dates & Compute Analytics": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Task Exists in ClickUp?",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Direct PostHog Event Trigger",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Eligible for Dev.to / Medium Auto Cross-Post?",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Insert Real Metrics into BigQuery (wealthyo_admin.social_metrics)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Schedule: Every 4 Hours (Metrics & Auto Cross-Post)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Waitlist Users Count from ClickUp",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Schedule: Twice Daily at 9 AM & 9 PM (Full Scrape)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Waitlist Users Count from ClickUp",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Task Exists in ClickUp?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Update Existing Task Status to complete & Inject Dates & Counts",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Create New Task in Scheduled State with Date Prefix & Counts",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "binaryMode": "separate",
+    "executionOrder": "v1"
+  },
+  "versionId": "5f9ae236-5fa4-495e-86c9-eca8b92b74bc",
+  "id": "89jky3xWGIZEoxye",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

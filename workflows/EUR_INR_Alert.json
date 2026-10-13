@@ -1,0 +1,347 @@
+{
+  "name": "EUR_INR_Alert",
+  "nodes": [
+    {
+      "alwaysOutputData": true,
+      "id": "b1d1b592-2fc4-4e6d-bd61-716fc219b659",
+      "name": "HTTP Request",
+      "parameters": {
+        "options": {},
+        "url": "https://v6.exchangerate-api.com/v6/97478bdc4b323d7bd6840af8/latest/EUR"
+      },
+      "position": [
+        -480,
+        -16
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3
+    },
+    {
+      "id": "abde35a1-1969-453e-aa1f-38bc60ab0d67",
+      "name": "Get current rate and last uapted dt",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c9d151b7-171b-4302-ba75-807f0e28e82a",
+              "name": "currentRate",
+              "type": "number",
+              "value": "={{ $json[\"conversion_rates\"][\"INR\"] }}"
+            },
+            {
+              "id": "06c38c00-aa09-48ce-839f-dd19be10a074",
+              "name": "time_last_update_utc",
+              "type": "string",
+              "value": "={{ $json.time_last_update_utc }}"
+            }
+          ]
+        },
+        "include": "selected",
+        "includeOtherFields": "={{ $json.time_last_update_utc }}",
+        "options": {}
+      },
+      "position": [
+        -272,
+        -16
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "5N7KcZw1dKldNcMf",
+          "name": "Postgres account"
+        }
+      },
+      "id": "3b6462e8-6344-4206-a12a-fef9bd763082",
+      "name": "Get DB Rate",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {},
+        "query": "SELECT max(rate) as rate\nFROM eur_inr_rates;"
+      },
+      "position": [
+        -304,
+        -224
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "alwaysOutputData": true,
+      "id": "3adbb3c6-ef53-4fb9-b90b-ed78e12007e5",
+      "name": "Join DB Vs Current API Rate",
+      "parameters": {
+        "combineBy": "combineByPosition",
+        "mode": "combine",
+        "options": {
+          "includeUnpaired": false
+        }
+      },
+      "position": [
+        -16,
+        -144
+      ],
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2
+    },
+    {
+      "alwaysOutputData": true,
+      "id": "57f8f39c-c6f2-4874-9d02-335e4c2ead4a",
+      "name": "Compare Current API vs DB data",
+      "parameters": {
+        "jsCode": "try {\n  const keys = Object.keys($json);\n  const fullData = JSON.stringify($json);\n  \n  return [{\n    json: {\n      debug: \"Response received\",\n      keys: keys,\n      fullResponse: fullData,\n      hasRates: $json.rates ? \"YES\" : \"NO\",\n      hasConversionRates: $json.conversion_rates ? \"YES\" : \"NO\"\n    }\n  }];\n} catch (error) {\n  return [{\n    json: {\n      error: error.message,\n      inputData: JSON.stringify($json)\n    }\n  }];\n}"
+      },
+      "position": [
+        208,
+        -144
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "alwaysOutputData": true,
+      "id": "b650016f-0bfd-4694-968f-010927cbdc32",
+      "name": "If( Currency Rate change?)",
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "802cb1cd-6f5a-4704-a012-6a4b944b6c3c",
+              "leftValue": "={{ $json.isChanged }}",
+              "operator": {
+                "operation": "notEmpty",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            },
+            {
+              "id": "f262bc3e-aa90-4139-9514-cfc598621db2",
+              "leftValue": "={{$json.isChanged === true}}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": "=true"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          }
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "position": [
+        432,
+        -144
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3
+    },
+    {
+      "credentials": {
+        "postgres": {
+          "id": "5N7KcZw1dKldNcMf",
+          "name": "Postgres account"
+        }
+      },
+      "id": "85808d1c-58ff-4a08-a426-17705f7a85a0",
+      "name": "Update Postfres table eur_inr_rates",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {},
+        "query": "INSERT INTO eur_inr_rates (rate, updated_at)\nVALUES ({{ $('Get current rate and last uapted dt').item.json.currentRate }}, '{{$('Get current rate and last uapted dt').item.json.time_last_update_utc}}');\n"
+      },
+      "position": [
+        720,
+        -160
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "credentials": {
+        "telegramApi": {
+          "id": "HJyobPIzoeX8TJQP",
+          "name": "EUR_INR_bot_token_n8n"
+        }
+      },
+      "id": "c0685218-0cda-4d4d-b590-473540e16d94",
+      "name": "Send Msg to EUR-INR-Alerts Channel",
+      "parameters": {
+        "additionalFields": {
+          "appendAttribution": false
+        },
+        "chatId": "-1003519318713",
+        "text": "=={{ \n  \"💱 EUR → INR Rate Update 💱\\n\\n\" +\n  \"Current Rate: \" + $('Join DB Vs Current API Rate').item.json.currentRate + \" 🇪🇺➡️🇮🇳\\n\" +\n  \"Last Updated: \" + $('Get current rate and last uapted dt').item.json.time_last_update_utc + \" ⏰\\n\\n\" +\n  \"Have a profitable day! 🚀\"\n}}\n"
+      },
+      "position": [
+        944,
+        -160
+      ],
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "webhookId": "b6385893-dfae-44b6-a80f-330b53b3567f"
+    },
+    {
+      "id": "32103991-4161-4a7b-b8a8-c02c3309949f",
+      "name": "Schedule Trigger",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "expression": "*/30 * * * *",
+              "field": "cronExpression"
+            }
+          ]
+        }
+      },
+      "position": [
+        -768,
+        -32
+      ],
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3
+    }
+  ],
+  "connections": {
+    "Compare Current API vs DB data": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "If( Currency Rate change?)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Get DB Rate": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Join DB Vs Current API Rate",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Get current rate and last uapted dt": {
+      "main": [
+        [
+          {
+            "index": 1,
+            "node": "Join DB Vs Current API Rate",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Get current rate and last uapted dt",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "If( Currency Rate change?)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Update Postfres table eur_inr_rates",
+            "type": "main"
+          }
+        ],
+        []
+      ]
+    },
+    "Join DB Vs Current API Rate": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Compare Current API vs DB data",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Get DB Rate",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "HTTP Request",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Send Msg to EUR-INR-Alerts Channel": {
+      "main": [
+        []
+      ]
+    },
+    "Update Postfres table eur_inr_rates": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send Msg to EUR-INR-Alerts Channel",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "versionId": "63fa7098-f107-4e8a-8262-a1147b95e1f6",
+  "id": "E7OEKbw1WpaLVA4O",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "createdAt": "2026-01-25T03:57:53.210Z",
+      "id": "RE0jEJUYrRq5E3Pz",
+      "name": "Currency exchange",
+      "updatedAt": "2026-01-25T03:57:53.210Z"
+    },
+    {
+      "createdAt": "2026-01-25T03:57:57.085Z",
+      "id": "yiQoZZSJKvU8bcCk",
+      "name": "EUI-INR",
+      "updatedAt": "2026-01-25T03:57:57.085Z"
+    },
+    {
+      "createdAt": "2025-12-28T21:48:35.788Z",
+      "id": "7WC9xCkN9jdEZHLU",
+      "name": "telegram",
+      "updatedAt": "2025-12-28T21:48:35.788Z"
+    }
+  ]
+}

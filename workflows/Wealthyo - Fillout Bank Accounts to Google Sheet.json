@@ -1,0 +1,270 @@
+{
+  "name": "Wealthyo - Fillout Bank Accounts to Google Sheet",
+  "nodes": [
+    {
+      "id": "4efd4cdb-9c11-4260-bb2c-473208ad305a",
+      "name": "Fillout Webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {},
+        "path": "wealthyo/fillout/bankaccounts"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "wealthyo-fillout-bankaccounts"
+    },
+    {
+      "id": "0fcf89d5-6edd-4e18-b0ae-7465b2aea3a5",
+      "name": "Normalize Fillout Payload",
+      "parameters": {
+        "jsCode": "const root = $json;\nconst body = root.body ?? root.data ?? root;\nconst submission = body.submission ?? body;\n\nfunction collectQuestions(...containers) {\n  const out = {};\n  for (const container of containers) {\n    const questions = container?.questions;\n    if (!Array.isArray(questions)) continue;\n    for (const q of questions) {\n      if (!q || !q.name) continue;\n      out[String(q.name).trim()] = q.value ?? \"\";\n    }\n  }\n  return out;\n}\n\nconst q = collectQuestions(root, body, submission, root.body?.submission);\n\nfunction pick(...keys) {\n  for (const key of keys) {\n    const value = q[key] ?? body[key] ?? root[key] ?? submission[key];\n    if (value !== undefined && value !== null && String(value).trim() !== \"\") {\n      return String(value).trim();\n    }\n  }\n  return \"\";\n}\n\nfunction yesNo(value) {\n  const text = String(value ?? \"\").trim().toLowerCase();\n  if ([\"true\", \"yes\", \"y\", \"1\", \"enabled\", \"active\"].includes(text)) return \"Yes\";\n  if ([\"false\", \"no\", \"n\", \"0\", \"disabled\", \"inactive\"].includes(text)) return \"No\";\n  return String(value ?? \"\").trim();\n}\n\nfunction asList(value) {\n  if (Array.isArray(value)) return value.join(\", \");\n  return String(value ?? \"\").trim();\n}\n\nconst spreadsheetId = pick(\"spreadsheet_id\", \"spreadsheetId\", \"Spreadsheet ID\");\nif (!spreadsheetId) {\n  throw new Error(`Missing spreadsheet_id. Available Fillout fields: ${Object.keys(q).join(\", \")}. Open the form from Wealthyo dashboard with ?customer_id=...&spreadsheet_id=...&tab_name=Bankaccounts&source=wealthyo_dashboard`);\n}\n\nreturn [{\n  json: {\n    customer_id: pick(\"customer_id\", \"customerId\", \"Customer ID\"),\n    spreadsheet_id: spreadsheetId,\n    tab_name: pick(\"tab_name\", \"tabName\") || \"Bankaccounts\",\n    source: pick(\"source\") || \"wealthyo_dashboard\",\n    entry_date: pick(\"entry_date\", \"Entry Date\") || new Date().toISOString().slice(0, 10),\n    bank_name: pick(\"bank_name\", \"Bank Name\", \"bank\"),\n    account_number: pick(\"account_number\", \"Account Number\", \"account no\", \"account_no\"),\n    account_type: pick(\"account_type\", \"Account Type\"),\n    primary_account_type: pick(\"primary_account_type\", \"Primary Account Type\"),\n    account_features: asList(q.account_features ?? q[\"Account Features\"] ?? pick(\"account_features\", \"Account Features\")),\n    bank_address: pick(\"bank_address\", \"Bank Address\", \"Address (bank_address)\", \"address\"),\n    has_debit_card: yesNo(pick(\"has_debit_card\", \"Has Debit Card\")),\n    has_credit_card: yesNo(pick(\"has_credit_card\", \"Has Credit Card\")),\n    has_cheque_book: yesNo(pick(\"has_cheque_book\", \"Has Cheque Book\")),\n    has_overdraft: yesNo(pick(\"has_overdraft\", \"Has Overdraft\")),\n    upi_enabled: yesNo(pick(\"upi_enabled\", \"UPI Enabled\")),\n    ifsc_code: pick(\"ifsc_code\", \"IFSC Code\"),\n    nominee: pick(\"nominee\", \"Nominee\"),\n    upi_id: pick(\"upi_id\", \"UPI ID\"),\n    account_open_date: pick(\"account_open_date\", \"Account Open Date\")\n  }\n}];"
+      },
+      "position": [
+        288,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "a162953e-64f0-4b11-8f7a-6c2ac26d7c1a",
+      "name": "Append Bank Account Row",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "columns": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "entry_date",
+              "id": "entry_date",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "bank_name",
+              "id": "bank_name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "account_number",
+              "id": "account_number",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "account_type",
+              "id": "account_type",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "primary_account_type",
+              "id": "primary_account_type",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "account_features",
+              "id": "account_features",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "bank_address",
+              "id": "bank_address",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "has_debit_card",
+              "id": "has_debit_card",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "has_credit_card",
+              "id": "has_credit_card",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "has_cheque_book",
+              "id": "has_cheque_book",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "has_overdraft",
+              "id": "has_overdraft",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "upi_enabled",
+              "id": "upi_enabled",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "ifsc_code",
+              "id": "ifsc_code",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "nominee",
+              "id": "nominee",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "upi_id",
+              "id": "upi_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "account_open_date",
+              "id": "account_open_date",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "account_features": "={ $json.account_features }",
+            "account_number": "={ $json.account_number }",
+            "account_open_date": "={ $json.account_open_date }",
+            "account_type": "={ $json.account_type }",
+            "bank_address": "={ $json.bank_address }",
+            "bank_name": "={ $json.bank_name }",
+            "entry_date": "={ $json.entry_date }",
+            "has_cheque_book": "={ $json.has_cheque_book }",
+            "has_credit_card": "={ $json.has_credit_card }",
+            "has_debit_card": "={ $json.has_debit_card }",
+            "has_overdraft": "={ $json.has_overdraft }",
+            "ifsc_code": "={ $json.ifsc_code }",
+            "nominee": "={ $json.nominee }",
+            "primary_account_type": "={ $json.primary_account_type }",
+            "upi_enabled": "={ $json.upi_enabled }",
+            "upi_id": "={ $json.upi_id }"
+          }
+        },
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.spreadsheet_id }}"
+        },
+        "operation": "append",
+        "options": {},
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Bankaccounts"
+        }
+      },
+      "position": [
+        592,
+        0
+      ],
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7
+    }
+  ],
+  "connections": {
+    "Fillout Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Normalize Fillout Payload",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Normalize Fillout Payload": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Append Bank Account Row",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "versionId": "fccad988-28ef-45e5-964e-c35f84c38e2f",
+  "id": "N1ev3W315qWJBtn9",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

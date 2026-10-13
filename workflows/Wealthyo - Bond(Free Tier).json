@@ -1,0 +1,284 @@
+{
+  "name": "Wealthyo - Bond(Free Tier)",
+  "nodes": [
+    {
+      "alwaysOutputData": true,
+      "id": "000383f7-5a48-41ca-950c-4fd270a2b18d",
+      "name": "Fillout Webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {},
+        "path": "wealthyo/fillout/bonds/single"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "wealthyo-fillout-bonds-single"
+    },
+    {
+      "alwaysOutputData": true,
+      "id": "86451e8d-c2d4-469b-9c3c-782543051a7a",
+      "name": "Normalize Fillout Bond Payload",
+      "parameters": {
+        "jsCode": "const root = $json;\n\nfunction collectNamedArrays(value, found = []) {\n  if (!value || typeof value !== \"object\") return found;\n  if (Array.isArray(value.questions)) found.push(value.questions);\n  if (Array.isArray(value.urlParameters)) found.push(value.urlParameters);\n  if (Array.isArray(value.calculations)) found.push(value.calculations);\n  if (Array.isArray(value)) {\n    for (const item of value) collectNamedArrays(item, found);\n  } else {\n    for (const item of Object.values(value)) collectNamedArrays(item, found);\n  }\n  return found;\n}\n\nconst fields = {};\nfor (const list of collectNamedArrays(root)) {\n  for (const item of list) {\n    if (!item || !item.name) continue;\n    fields[String(item.name).trim()] = item.value ?? \"\";\n  }\n}\n\nfunction pick(...keys) {\n  for (const key of keys) {\n    const value = fields[key];\n    if (value !== undefined && value !== null && String(value).trim() !== \"\") {\n      return String(value).trim();\n    }\n  }\n  return \"\";\n}\n\nfunction cleanNumber(value) {\n  return String(value ?? \"\").replace(/[₹,%]/g, \"\").replace(/,/g, \"\").trim();\n}\n\nconst spreadsheetId = pick(\"spreadsheet_id\", \"spreadsheetId\", \"Spreadsheet ID\");\nif (!spreadsheetId) {\n  throw new Error(`Missing spreadsheet_id. Fields received by n8n: ${Object.keys(fields).join(\", \")}`);\n}\n\nreturn {\n  customer_id: pick(\"customer_id\", \"customerId\", \"Customer ID\"),\n  spreadsheet_id: spreadsheetId,\n  tab_name: pick(\"tab_name\", \"tabName\") || \"Bonds\",\n  source: pick(\"source\") || \"wealthyo_dashboard_single_bond\",\n  entry_mode: pick(\"entry_mode\") || \"single\",\n\n  invest_platform: pick(\"invest_platform\", \"Investment Platform\"),\n  issuer_type: pick(\"issuer_type\", \"Issuer Type\"),\n  sector: pick(\"sector\", \"Sector\"),\n  issuer_domain: pick(\"issuer_domain\", \"Issuer Domain\"),\n  isin: pick(\"isin\", \"ISIN\"),\n  units: cleanNumber(pick(\"units\", \"Units\")),\n  total_investment: cleanNumber(pick(\"total_investment\", \"Total Investment\", \"Investment ₹\")),\n  start_date: pick(\"start_date\", \"Start Date\"),\n  end_date: pick(\"end_date\", \"End Date\"),\n  coupon_rate_pct: cleanNumber(pick(\"coupon_rate_pct\", \"Coupon Rate\", \"Coupon Rate %\")),\n  ytm_pct: cleanNumber(pick(\"ytm_pct\", \"YTM\", \"YTM %\")),\n  interest_payout_frequency_in_months: cleanNumber(pick(\"interest_payout_frequency_in_months\", \"Interest Payout Frequency In Months\")),\n  maturity_amount: cleanNumber(pick(\"maturity_amount\", \"Maturity Amount\", \"Maturity ₹\")),\n  relationship_manager_name: pick(\"relationship_manager_name\", \"Relationship Manager Name\"),\n  relationship_manager_email: pick(\"relationship_manager_email\", \"Relationship Manager Email\"),\n  relationship_manager_phone: pick(\"relationship_manager_phone\", \"Relationship Manager Phone\"),\n  notes: pick(\"notes\", \"Notes\")\n};",
+        "mode": "runOnceForEachItem"
+      },
+      "position": [
+        288,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "c04f3fd9-745a-40f1-8655-7e979c68d6e7",
+      "name": "Append Bond Row",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "columns": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "invest_platform",
+              "id": "invest_platform",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "issuer_type",
+              "id": "issuer_type",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "sector",
+              "id": "sector",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "issuer_domain",
+              "id": "issuer_domain",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "isin",
+              "id": "isin",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "units",
+              "id": "units",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "total_investment",
+              "id": "total_investment",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "start_date",
+              "id": "start_date",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "end_date",
+              "id": "end_date",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "coupon_rate_pct",
+              "id": "coupon_rate_pct",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "ytm_pct",
+              "id": "ytm_pct",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "interest_payout_frequency_in_months",
+              "id": "interest_payout_frequency_in_months",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "maturity_amount",
+              "id": "maturity_amount",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "relationship_manager_name",
+              "id": "relationship_manager_name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "relationship_manager_email",
+              "id": "relationship_manager_email",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "relationship_manager_phone",
+              "id": "relationship_manager_phone",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "notes",
+              "id": "notes",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "coupon_rate_pct": "={{ $json.coupon_rate_pct }}",
+            "end_date": "={{ $json.end_date }}",
+            "interest_payout_frequency_in_months": "={{ $json.interest_payout_frequency_in_months }}",
+            "invest_platform": "={{ $json.invest_platform }}",
+            "isin": "={{ $json.isin }}",
+            "issuer_domain": "={{ $json.issuer_domain }}",
+            "issuer_type": "={{ $json.issuer_type }}",
+            "maturity_amount": "={{ $json.maturity_amount }}",
+            "notes": "={{ $json.notes }}",
+            "relationship_manager_email": "={{ $json.relationship_manager_email }}",
+            "relationship_manager_name": "={{ $json.relationship_manager_name }}",
+            "relationship_manager_phone": "={{ $json.relationship_manager_phone }}",
+            "sector": "={{ $json.sector }}",
+            "start_date": "={{ $json.start_date }}",
+            "total_investment": "={{ $json.total_investment }}",
+            "units": "={{ $json.units }}",
+            "ytm_pct": "={{ $json.ytm_pct }}"
+          }
+        },
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.spreadsheet_id }}"
+        },
+        "operation": "append",
+        "options": {},
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Bonds"
+        }
+      },
+      "position": [
+        592,
+        0
+      ],
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7
+    }
+  ],
+  "connections": {
+    "Fillout Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Normalize Fillout Bond Payload",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Normalize Fillout Bond Payload": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Append Bond Row",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "versionId": "2ec3627e-ac03-4754-a47e-277fc2aa4ab5",
+  "id": "V89CZW6DsLX6UGrL",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

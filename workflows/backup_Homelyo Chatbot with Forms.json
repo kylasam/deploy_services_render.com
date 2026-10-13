@@ -1,0 +1,322 @@
+{
+  "name": "backup_Homelyo Chatbot with Forms",
+  "nodes": [
+    {
+      "id": "ecf16a25-2b98-4381-bb28-967ae4d27eeb",
+      "name": "Webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {},
+        "path": "830fb390-a2da-4682-9248-edcbeeec8dac",
+        "responseMode": "responseNode"
+      },
+      "position": [
+        944,
+        32
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "webhookId": "830fb390-a2da-4682-9248-edcbeeec8dac"
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "PWFRJ8GkzPw115xh",
+          "name": "Google Service Account account"
+        }
+      },
+      "id": "3332ab84-4905-4c69-9a6f-fce80921d6de",
+      "name": "Get Knowledge Base",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentURL": "https://docs.google.com/document/d/1wbZ_7vC2ikRC42c7AsKJuNdzgbHOSYCfel7NQmOKqhs/edit?usp=sharing",
+        "operation": "get"
+      },
+      "position": [
+        1168,
+        32
+      ],
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2
+    },
+    {
+      "id": "df18526c-6769-4f1c-b40a-3a5b1eb0dc84",
+      "name": "Process Content",
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet text = '';\n\nfor (const item of items) {\n  if (item.json.content) {\n    text += item.json.content + '\\n';\n  }\n}\n\nconst userMessage = $node[\"Webhook\"].json.body.message || '';\nconst customerData = $node[\"Webhook\"].json.body.customer_data || null;\n\nreturn [{\n  json: {\n    knowledge_base: text,\n    user_message: userMessage,\n    customer_data: customerData\n  }\n}];"
+      },
+      "position": [
+        1376,
+        32
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "e4913cbc-3fca-4671-b3ef-a9bc84a99ecd",
+      "name": "Set Prompt",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "system-prompt",
+              "name": "system_prompt",
+              "type": "string",
+              "value": "=You are Homely, the friendly property assistant for Homelyo.eu in Berlin-Lichtenrade.\n\nYour personality:\nWarm, helpful, professional, and concise.\n\nYour job:\n1. Answer questions ONLY from the knowledge base below\n2. Be clear about our STRICT RULES: NO PETS, NO SMOKING, NO DRUGS\n3. When someone wants to book/reserve a room, trigger the booking form\n4. Keep responses friendly but brief (2–4 sentences max)\n\nKNOWLEDGE BASE:\n{{ $json.knowledge_base }}\n\nBOOKING TRIGGER RULE:\nIf the user expresses ANY of these intents:\n- \"I want to book\"\n- \"I'd like to reserve\"\n- \"I'm interested in renting\"\n- \"How do I apply\"\n- \"I want to rent\"\n- \"I want this room\"\n- Any similar booking/reservation intent\n\nThen respond EXACTLY with:\n\"Great choice! 🏠 I'll open our booking form for you. Please fill it out and our team will contact you within 24 hours!\"\n\nGENERAL RULES:\n- Never invent pricing, policies, or details\n- If uncertain about non-booking questions, say:\n  \"I don't have that info, but I can have our team reach out! May I get your name and email?\"\n- Always mention the 24-hour response time when collecting details\n- Emphasize the balcony advantage for KE2\n- Use occasional emojis for warmth: 🏠 ✨ 📧\n\nCONTACT RULE:\n- When contact is needed (non-booking), tell the user our team will help and respond within 24 hours\n- Do NOT include links or emails in the text\n- Buttons will be shown separately"
+            },
+            {
+              "id": "user-msg",
+              "name": "user_message",
+              "type": "string",
+              "value": "={{ $json.user_message }}"
+            },
+            {
+              "id": "has-customer-data",
+              "name": "has_customer_data",
+              "type": "boolean",
+              "value": "={{ $json.customer_data !== null }}"
+            },
+            {
+              "id": "customer-info",
+              "name": "customer_data",
+              "type": "string",
+              "value": "={{ $json.customer_data }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "position": [
+        1600,
+        32
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "credentials": {
+        "groqApi": {
+          "id": "hA1VUxlheb9zJf7G",
+          "name": "Groq account"
+        }
+      },
+      "id": "c48b938b-df6f-4c2f-9418-251b55333f49",
+      "name": "Groq API",
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonBody": "={{ {\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": $json.system_prompt\n    },\n    {\n      \"role\": \"user\",\n      \"content\": $json.user_message\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 400\n} }}",
+        "method": "POST",
+        "nodeCredentialType": "groqApi",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "specifyBody": "json",
+        "url": "https://api.groq.com/openai/v1/chat/completions"
+      },
+      "position": [
+        1824,
+        32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
+    },
+    {
+      "id": "52cff3fd-26d6-4acb-98e8-5ca9ef039b7f",
+      "name": "Has Customer Data?",
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node[\"Set Prompt\"].json.has_customer_data }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "position": [
+        2048,
+        32
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2
+    },
+    {
+      "id": "9d0526a4-195b-45eb-abfe-271c7a5a897c",
+      "name": "Respond (Normal)",
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={\n  \"reply\": \"{{ $node['Groq API'].json.choices[0].message.content.replace(/\\\"/g, '\\\\\\\"') }}\",\n  \"trigger_form\": {{ $node['Groq API'].json.choices[0].message.content.includes(\"I'll open our booking form\") }},\n  \"buttons\": [\n    {\n      \"label\": \"📧 Contact Homelyo\",\n      \"action\": \"open_url\",\n      \"url\": \"mailto:support@homelyo.eu?subject=Homelyo%20Inquiry&body=Hello%20Homelyo%20Team,%0D%0A%0D%0AI%20am%20interested%20in%20a%20room.%0D%0AHere%20are%20my%20details:%0D%0A-%20Full%20Name:%0D%0A-%20Phone%20Number:%0D%0A-%20Message:%0D%0A%0D%0AThank%20you!\"\n    },\n    {\n      \"label\": \"🌐 Visit Homelyo Website\",\n      \"action\": \"open_url\",\n      \"url\": \"https://www.homelyo.eu\"\n    }\n  ]\n}"
+      },
+      "position": [
+        2256,
+        144
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5
+    },
+    {
+      "id": "b0167939-a6a8-4cb8-863b-79a010cdbab1",
+      "name": "Submit Google Enquiry Form",
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "entry.782224773",
+              "value": "=={{ $node[\"Set Prompt\"].json.customer_data.name }}"
+            },
+            {
+              "name": "entry.1803311840",
+              "value": "=={{ $node[\"Set Prompt\"].json.customer_data.email }}"
+            },
+            {
+              "name": "entry.867916305",
+              "value": "=={{ $node[\"Set Prompt\"].json.customer_data.phone }}"
+            },
+            {
+              "name": "entry.952874026",
+              "value": "=={{ $node[\"Set Prompt\"].json.customer_data.preferred_room }}"
+            },
+            {
+              "name": "entry.330848657",
+              "value": "=={{ $node[\"Set Prompt\"].json.customer_data.movein_date }}"
+            },
+            {
+              "name": "entry.1266312645",
+              "value": "=={{ $node[\"Set Prompt\"].json.customer_data.duration }}"
+            },
+            {
+              "name": "entry.1561893245",
+              "value": "=={{ $node[\"Set Prompt\"].json.customer_data.requirements }}"
+            },
+            {
+              "name": "entry.1096506353",
+              "value": "=={{ $node[\"Set Prompt\"].json.customer_data.source || 'Chatbot' }}"
+            }
+          ]
+        },
+        "contentType": "form-urlencoded",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "url": "https://docs.google.com/forms/d/e/1FAIpQLScajW2ZtiXfJHKTwAoAA22CTrJ3srWVPqTkABLxj2-iRV2J7A/formResponse"
+      },
+      "position": [
+        2272,
+        -96
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3
+    }
+  ],
+  "connections": {
+    "Get Knowledge Base": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Process Content",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Groq API": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Has Customer Data?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Has Customer Data?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Submit Google Enquiry Form",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Respond (Normal)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Process Content": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Set Prompt",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Set Prompt": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Groq API",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Get Knowledge Base",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed"
+  },
+  "versionId": "2994a59b-5507-4fa6-984d-a89617c9da2d",
+  "id": "Rnzn3tbSc1v7Q9nM",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "createdAt": "2026-01-21T00:35:42.082Z",
+      "id": "h2iaFoC9LL8JVZZ7",
+      "name": "homelyo",
+      "updatedAt": "2026-01-21T00:35:42.082Z"
+    },
+    {
+      "createdAt": "2026-01-21T00:35:47.854Z",
+      "id": "QA8Hj5fy1elk3aD8",
+      "name": "chatbot",
+      "updatedAt": "2026-01-21T00:35:47.854Z"
+    }
+  ]
+}

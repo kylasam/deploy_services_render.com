@@ -1,0 +1,300 @@
+{
+  "name": "Wealthyo - Bond(Paid Users)",
+  "nodes": [
+    {
+      "alwaysOutputData": true,
+      "id": "8af84893-dd75-4c9c-b2f2-c9e210e8ef0d",
+      "name": "Fillout Webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {},
+        "path": "wealthyo/fillout/bonds/bulk"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "wealthyo-fillout-bonds-bulk"
+    },
+    {
+      "alwaysOutputData": false,
+      "id": "ca79fa11-2f0b-4ee8-b25f-28b43083b2f1",
+      "name": "Normalize-Bonds(Paid user)",
+      "parameters": {
+        "jsCode": "const body = $json.body;\nconst bonds = body.submission.questions[0].value;\nconst urlParams = body.submission.urlParameters;\n\nconst customerId = urlParams.find(p => p.id === \"customer_id\")?.value;\nconst spreadsheetId = urlParams.find(p => p.id === \"spreadsheet_id\")?.value;\nconst tabName = urlParams.find(p => p.id === \"tab_name\")?.value;\n\nreturn bonds.map(bond => ({\n  json: {\n    customer_id: customerId,\n    spreadsheet_id: spreadsheetId,\n    tab_name: tabName,\n    invest_platform: bond.invest_platform,\n    issuer_type: bond.issuer_type,\n    sector: bond.sector,\n    issuer_domain: bond.issuer_domain,\n    isin: bond.isin,\n    units: bond.units,\n    total_investment: bond.total_investment,\n    start_date: bond.start_date,\n    end_date: bond.end_date,\n    coupon_rate_pct: bond.coupon_rate_pct,\n    ytm_pct: bond.ytm_pct,\n    interest_payout_frequency_in_months: bond.interest_payout_frequency_in_months,\n    maturity_amount: bond.maturity_amount,\n    relationship_manager_name: bond.relationship_manager_name,\n    relationship_manager_email: bond.relationship_manager_email,\n    notes: bond.notes\n  }\n}));"
+      },
+      "position": [
+        288,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "alwaysOutputData": false,
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "cc8a026b-0c8a-4357-8549-430f1d52ae74",
+      "name": "Append-Bonds",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "columns": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "invest_platform",
+              "id": "invest_platform",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "issuer_type",
+              "id": "issuer_type",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "sector",
+              "id": "sector",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "issuer_domain",
+              "id": "issuer_domain",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "isin",
+              "id": "isin",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "units",
+              "id": "units",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "total_investment",
+              "id": "total_investment",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "start_date",
+              "id": "start_date",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "end_date",
+              "id": "end_date",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "coupon_rate_pct",
+              "id": "coupon_rate_pct",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "ytm_pct",
+              "id": "ytm_pct",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "interest_payout_frequency_in_months",
+              "id": "interest_payout_frequency_in_months",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "maturity_amount",
+              "id": "maturity_amount",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "relationship_manager_name",
+              "id": "relationship_manager_name",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "relationship_manager_email",
+              "id": "relationship_manager_email",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "relationship_manager_phone",
+              "id": "relationship_manager_phone",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "notes",
+              "id": "notes",
+              "removed": false,
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "coupon_rate_pct": "={{ $json.coupon_rate_pct }}",
+            "end_date": "={{ $json.end_date }}",
+            "interest_payout_frequency_in_months": "={{ $json.interest_payout_frequency_in_months }}",
+            "invest_platform": "={{ $json.invest_platform }}",
+            "isin": "={{ $json.isin }}",
+            "issuer_domain": "={{ $json.issuer_domain }}",
+            "issuer_type": "={{ $json.issuer_type }}",
+            "maturity_amount": "={{ $json.maturity_amount }}",
+            "notes": "={{ $json.notes }}",
+            "relationship_manager_email": "={{ $json.relationship_manager_email }}",
+            "relationship_manager_name": "={{ $json.relationship_manager_name }}",
+            "relationship_manager_phone": "={{ $json.relationship_manager_phone }}",
+            "sector": "={{ $json.sector }}",
+            "start_date": "={{ $json.start_date }}",
+            "total_investment": "={{ $json.total_investment }}",
+            "units": "={{ $json.units }}",
+            "ytm_pct": "={{ $json.ytm_pct }}"
+          }
+        },
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.spreadsheet_id }}"
+        },
+        "operation": "append",
+        "options": {},
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Bonds"
+        }
+      },
+      "position": [
+        592,
+        0
+      ],
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7
+    }
+  ],
+  "connections": {
+    "Fillout Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Normalize-Bonds(Paid user)",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Normalize-Bonds(Paid user)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Append-Bonds",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "versionId": "a0f158ab-57dd-48fe-abea-7da037ba70f9",
+  "id": "buSnP2U6VfOMqvUi",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
