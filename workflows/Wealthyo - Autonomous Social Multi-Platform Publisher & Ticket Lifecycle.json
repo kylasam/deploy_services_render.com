@@ -8,7 +8,7 @@
   "nodes": [
     {
       "id": "node-trigger-schedule",
-      "name": "Schedule: Daily Peak Hours (1:00 PM & 9:00 PM IST - Golden Windows)",
+      "name": "Schedule: Daily Peak Hour (8:30 PM IST - Primary Golden Window)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -20,7 +20,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 13,21 * * *"
+              "expression": "30 20 * * *"
             }
           ]
         }
