@@ -176,7 +176,7 @@
         208
       ],
       "parameters": {
-        "jsCode": "const baseInfo = $('Extract Asset File IDs & Video Staging URL').first().json;\n\nlet caption = '';\nlet blogContent = '';\n\n// 1. Read binary data safely using n8n helper\ntry {\n  const capBuf = await this.helpers.getBinaryDataBuffer(0, 'caption_data');\n  if (capBuf) caption = capBuf.toString('utf-8').trim();\n} catch (e) {}\n\ntry {\n  const blogBuf = await this.helpers.getBinaryDataBuffer(0, 'blog_data');\n  if (blogBuf) blogContent = blogBuf.toString('utf-8').trim();\n} catch (e) {}\n\n// 2. Resilient fallback if binary data was unavailable\nif (!caption || caption.length < 50 || caption.includes('~)^')) {\n  caption = `The 4-Bank Account Penalty Trap: Why Indian Tech Professionals Silently Lose \u20b91,200/Year \ud83d\udea8\\n\\n1\ufe0f\u20e3 Switched jobs 3 times in 5 years? You probably have 3 dormant salary accounts.\\n2\ufe0f\u20e3 Banks quietly convert salary accounts to regular savings after 90 days of zero salary credit.\\n3\ufe0f\u20e3 Minimum balance penalties start eating \u20b9750/quarter per account.\\n\\nStop paying banks for forgetting your own money. Track every single account, FD, and EPF in one place with Wealthyo.\\n\\nComment 'WEALTHYO' below for priority access to the unified net worth radar.\\n\\n#personalfinanceindia #networth #wealthyo #salaryaccount #minimumbalance #bankcharges #hdfcbank #icicibank #smartmoney #bangaloretech`;\n}\n\n// STRICT META GUARD: Cap caption at 2,150 chars (Instagram hard limit is 2,200)\nif (caption.length > 2150) {\n  caption = caption.slice(0, 2150);\n}\n\nif (!blogContent || blogContent.length < 50 || blogContent.includes('~)^')) {\n  blogContent = `# The 4-Bank Account Penalty Trap: Why Indian Professionals Silently Lose \u20b91,200/Year\\n\\nIndian salaried professionals frequently accumulate dormant accounts across career transitions.\\n\\n*Originally published on Wealthyo (https://wealthyo.in).*`;\n}\n\n// 3. Extract Blog Metadata\nlet title = baseInfo.scheduled_folder_name.replace(/^\\d{4}-\\d{2}-\\d{2}_?/, '').replace(/_/g, ' ');\ntitle = title.charAt(0).toUpperCase() + title.slice(1);\nlet coverImage = `https://storage.googleapis.com/wealthyo-social-media-assets/articles/${baseInfo.today_date}_the_4-bank_account_penalty_trap_cover.jpg`;\n\nconst lines = blogContent.split('\\n');\nfor (const line of lines) {\n  if (line.startsWith('title:')) {\n    title = line.replace('title:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n  if (line.startsWith('cover_image:')) {\n    coverImage = line.replace('cover_image:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n}\nconst cleanBlogMarkdown = blogContent.replace(/^---[\\s\\S]*?---\\s*/, '').trim();\n\nconst hook = caption.split('\\n')[0] || '';\nconst hashtags = (caption.match(/#[a-zA-Z0-9_]+/g) || []);\n\nreturn [{\n  json: {\n    ...baseInfo,\n    title: title,\n    caption: caption,\n    hook: hook,\n    hashtags: hashtags,\n    blog_title: title,\n    blog_cover_image: coverImage,\n    blog_clean_markdown: cleanBlogMarkdown,\n    preflight_score: 95,\n    passed: true\n  }\n}];"
+        "jsCode": "const baseInfo = $('Extract Asset File IDs & Video Staging URL').first().json;\n\nlet caption = '';\nlet blogContent = '';\n\n// 1. Read binary data safely using n8n helper\ntry {\n  const capBuf = await this.helpers.getBinaryDataBuffer(0, 'caption_data');\n  if (capBuf) caption = capBuf.toString('utf-8').trim();\n} catch (e) {}\n\ntry {\n  const blogBuf = await this.helpers.getBinaryDataBuffer(0, 'blog_data');\n  if (blogBuf) blogContent = blogBuf.toString('utf-8').trim();\n} catch (e) {}\n\n// 2. Resilient fallback if binary data was unavailable\nif (!caption || caption.length < 50 || caption.includes('~)^')) {\n  caption = `The 4-Bank Account Penalty Trap: Why Indian Tech Professionals Silently Lose ₹1,200/Year 🚨\\n\\n1️⃣ Switched jobs 3 times in 5 years? You probably have 3 dormant salary accounts.\\n2️⃣ Banks quietly convert salary accounts to regular savings after 90 days of zero salary credit.\\n3️⃣ Minimum balance penalties start eating ₹750/quarter per account.\\n\\nStop paying banks for forgetting your own money. Track every single account, FD, and EPF in one place with Wealthyo.\\n\\nComment 'WEALTHYO' below for priority access to the unified net worth radar.\\n\\n#personalfinanceindia #networth #wealthyo #salaryaccount #minimumbalance #bankcharges #hdfcbank #icicibank #smartmoney #bangaloretech`;\n}\n\n// STRICT META GUARD: Cap caption at 2,150 chars (Instagram hard limit is 2,200)\nif (caption.length > 2150) {\n  caption = caption.slice(0, 2150);\n}\n\nif (!blogContent || blogContent.length < 50 || blogContent.includes('~)^')) {\n  blogContent = `# The 4-Bank Account Penalty Trap: Why Indian Professionals Silently Lose ₹1,200/Year\\n\\nIndian salaried professionals frequently accumulate dormant accounts across career transitions.\\n\\n*Originally published on Wealthyo (https://wealthyo.in).*`;\n}\n\n// 3. Extract Blog Metadata\nlet title = baseInfo.scheduled_folder_name.replace(/^\\d{4}-\\d{2}-\\d{2}_?/, '').replace(/_/g, ' ');\ntitle = title.charAt(0).toUpperCase() + title.slice(1);\nlet coverImage = `https://storage.googleapis.com/wealthyo-social-media-assets/articles/${baseInfo.today_date}_the_4-bank_account_penalty_trap_cover.jpg`;\n\nconst lines = blogContent.split('\\n');\nfor (const line of lines) {\n  if (line.startsWith('title:')) {\n    title = line.replace('title:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n  if (line.startsWith('cover_image:')) {\n    coverImage = line.replace('cover_image:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n}\nconst cleanBlogMarkdown = blogContent.replace(/^---[\\s\\S]*?---\\s*/, '').trim();\n\nconst hook = caption.split('\\n')[0] || '';\nconst hashtags = (caption.match(/#[a-zA-Z0-9_]+/g) || []);\n\nreturn [{\n  json: {\n    ...baseInfo,\n    title: title,\n    caption: caption,\n    hook: hook,\n    hashtags: hashtags,\n    blog_title: title,\n    blog_cover_image: coverImage,\n    blog_clean_markdown: cleanBlogMarkdown,\n    preflight_score: 95,\n    passed: true\n  }\n}];"
       }
     },
     {
@@ -226,7 +226,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  \"name\": \"\ud83d\ude80 [Autonomous] \" + $json.title,\n  \"description\": \"Scheduled Release: \" + $json.today_date + \"\\nPre-Flight Quality Score: \" + $json.preflight_score + \"/100\\n\\nHook: \" + $json.hook + \"\\n\\nVideo Asset Staging: \" + $json.video_public_url,\n  \"status\": \"in progress\",\n  \"tags\": [\"autonomous\", \"reels\", \"social-sync\"]\n}) }}"
+        "jsonBody": "={{ JSON.stringify({\n  \"name\": \"🚀 [Autonomous] \" + $json.title,\n  \"description\": \"Scheduled Release: \" + $json.today_date + \"\\nPre-Flight Quality Score: \" + $json.preflight_score + \"/100\\n\\nHook: \" + $json.hook + \"\\n\\nVideo Asset Staging: \" + $json.video_public_url,\n  \"status\": \"in progress\",\n  \"tags\": [\"autonomous\", \"reels\", \"social-sync\"]\n}) }}"
       }
     },
     {
@@ -235,8 +235,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        176,
-        208
+        400,
+        0
       ],
       "parameters": {
         "method": "POST",
@@ -246,11 +246,11 @@
           "parameters": [
             {
               "name": "file_url",
-              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.video_public_url }}"
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.video_public_url }}"
             },
             {
               "name": "title",
-              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.title }}"
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.title }}"
             },
             {
               "name": "description",
@@ -262,7 +262,8 @@
             }
           ]
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "node-instagram-init-reel",
@@ -297,7 +298,8 @@
             }
           ]
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "node-wait-meta-transcoding",
@@ -311,7 +313,8 @@
       "parameters": {
         "amount": 45,
         "unit": "seconds"
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "node-instagram-publish-live",
@@ -338,7 +341,8 @@
             }
           ]
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "node-devto-publish-article",
@@ -346,8 +350,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1072,
-        208
+        400,
+        416
       ],
       "parameters": {
         "method": "POST",
@@ -371,8 +375,9 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  \"article\": {\n    \"title\": $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.blog_title,\n    \"published\": true,\n    \"body_markdown\": $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.blog_clean_markdown + \"\\n\\n---\\n*Originally published on [Wealthyo](https://wealthyo.in).*\",\n    \"tags\": [\"personalfinance\", \"wealth\", \"investing\", \"india\"],\n    \"canonical_url\": \"https://wealthyo.in/blog\",\n    \"main_image\": $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.blog_cover_image || undefined\n  }\n}) }}"
-      }
+        "jsonBody": "={{ JSON.stringify({\n  \"article\": {\n    \"title\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_title,\n    \"published\": true,\n    \"body_markdown\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_clean_markdown + \"\\n\\n---\\n*Originally published on [Wealthyo](https://wealthyo.in).*\",\n    \"tags\": [\"personalfinance\", \"wealth\", \"investing\", \"india\"],\n    \"canonical_url\": \"https://wealthyo.in/blog\",\n    \"main_image\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_cover_image || undefined\n  }\n}) }}"
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "node-clickup-attach-live-urls",
@@ -385,7 +390,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "https://api.clickup.com/api/v2/task/={{ $('ClickUp: Create Video Calendar Task').first().json.id }}/comment",
+        "url": "=https://api.clickup.com/api/v2/task/{{ $('ClickUp: Create Video Calendar Task').first().json.id }}/comment",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -401,9 +406,9 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  \"comment_text\": \"### \ud83c\udf89 Autonomous Multi-Platform Publishing Completed!\\n\\n- \ud83d\udcf8 **Instagram Reel ID**: \" + ($('Instagram: Publish Reel Live').item.json?.id || 'Published') + \"\\n- \ud83d\udc65 **Facebook Reel Video ID**: \" + ($('Facebook: Publish Video Reel').item.json?.id || 'Published') + \"\\n- \u270d\ufe0f **Dev.to Article**: \" + ($('Dev.to: Publish Canonical Blog Article').item.json?.url || 'Published') + \"\\n\\nAssets read autonomously from Google Drive calendar.\"\n}) }}",
-        "body": "={{ JSON.stringify({\n  comment_text: `\ud83d\ude80 Automated Multi-Platform Release Report (${$('Pre-Flight Content Quality Scorer & Sanitizer').first().json.scheduled_date})\\n\\n` +\n    `\ud83d\udccc ClickUp Task: #${$('ClickUp: Create Video Calendar Task').first().json.id}\\n` +\n    `\ud83d\udc65 Facebook Reel ID: ${$('Facebook: Publish Video Reel').first().json.id || $('Facebook: Publish Video Reel').first().json.video_id}\\n` +\n    `\ud83d\udcf8 Instagram Reel ID: ${$('Instagram: Publish Reel Live').first().json.id}\\n` +\n    `\u270d\ufe0f Dev.to Article: ${$('Dev.to: Publish Canonical Blog Article').first().json.url || $('Dev.to: Publish Canonical Blog Article').first().json.canonical_url}\\n\\n` +\n    `\ud83d\udcca Pre-Flight Quality Score: ${$('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score}/100 \u2705`\n}) }}"
-      }
+        "jsonBody": "={{ JSON.stringify({\n  comment_text: \"🎉 Autonomous Multi-Platform Publishing Report (\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date + \")\\n\\n\" +\n    \"👥 Facebook Video ID: \" + ($('Facebook: Publish Video Reel').first().json.id || '❌ FAILED - check execution') + \"\\n\" +\n    \"📸 Instagram Reel ID: \" + ($('Instagram: Publish Reel Live').first().json.id || '❌ FAILED - check execution') + \"\\n\" +\n    \"✍️ Dev.to Article: \" + ($('Dev.to: Publish Canonical Blog Article').first().json.url || '❌ FAILED - check execution') + \"\\n\\n\" +\n    \"📊 Pre-Flight Score: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score + \"/100\"\n}) }}"
+      },
+      "executeOnce": true
     },
     {
       "id": "node-clickup-mark-done",
@@ -416,7 +421,7 @@
       ],
       "parameters": {
         "method": "PUT",
-        "url": "https://api.clickup.com/api/v2/task/={{ $('ClickUp: Create Video Calendar Task').first().json.id }}",
+        "url": "=https://api.clickup.com/api/v2/task/{{ $('ClickUp: Create Video Calendar Task').first().json.id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -433,6 +438,21 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\"status\": \"complete\"}"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "node-merge-all-platforms",
+      "name": "Merge: Wait for All Platforms",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1072,
+        208
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
       }
     }
   ],
@@ -544,6 +564,16 @@
             "node": "Facebook: Publish Video Reel",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Instagram: Init Reel Container",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dev.to: Publish Canonical Blog Article",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -552,7 +582,7 @@
       "main": [
         [
           {
-            "node": "Instagram: Init Reel Container",
+            "node": "Merge: Wait for All Platforms",
             "type": "main",
             "index": 0
           }
@@ -570,29 +600,40 @@
         ]
       ]
     },
-    "Wait for Meta Video Transcoding (45s)": {
-      "main": [
-        [
-          {
-            "node": "Instagram: Publish Reel Live",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Instagram: Publish Reel Live": {
       "main": [
         [
           {
-            "node": "Dev.to: Publish Canonical Blog Article",
+            "node": "Merge: Wait for All Platforms",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
     },
     "Dev.to: Publish Canonical Blog Article": {
+      "main": [
+        [
+          {
+            "node": "Merge: Wait for All Platforms",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "ClickUp: Attach Live URLs & Comments": {
+      "main": [
+        [
+          {
+            "node": "ClickUp: Mark Task Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge: Wait for All Platforms": {
       "main": [
         [
           {
@@ -603,11 +644,11 @@
         ]
       ]
     },
-    "ClickUp: Attach Live URLs & Comments": {
+    "Wait for Meta Video Transcoding (45s)": {
       "main": [
         [
           {
-            "node": "ClickUp: Mark Task Done",
+            "node": "Instagram: Publish Reel Live",
             "type": "main",
             "index": 0
           }
