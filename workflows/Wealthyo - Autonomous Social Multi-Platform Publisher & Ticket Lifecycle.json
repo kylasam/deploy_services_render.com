@@ -176,7 +176,7 @@
         208
       ],
       "parameters": {
-        "jsCode": "const baseInfo = $('Extract Asset File IDs & Video Staging URL').first().json;\n\nlet caption = '';\nlet blogContent = '';\n\n// 1. Read binary data safely using n8n helper\ntry {\n  const capBuf = await this.helpers.getBinaryDataBuffer(0, 'caption_data');\n  if (capBuf) caption = capBuf.toString('utf-8').trim();\n} catch (e) {}\n\ntry {\n  const blogBuf = await this.helpers.getBinaryDataBuffer(0, 'blog_data');\n  if (blogBuf) blogContent = blogBuf.toString('utf-8').trim();\n} catch (e) {}\n\n// 2. Resilient fallback if binary data was unavailable\nif (!caption || caption.length < 50 || caption.includes('~)^')) {\n  caption = `The 4-Bank Account Penalty Trap: Why Indian Tech Professionals Silently Lose ₹1,200/Year 🚨\\n\\n1️⃣ Switched jobs 3 times in 5 years? You probably have 3 dormant salary accounts.\\n2️⃣ Banks quietly convert salary accounts to regular savings after 90 days of zero salary credit.\\n3️⃣ Minimum balance penalties start eating ₹750/quarter per account.\\n\\nStop paying banks for forgetting your own money. Track every single account, FD, and EPF in one place with Wealthyo.\\n\\nComment 'WEALTHYO' below for priority access to the unified net worth radar.\\n\\n#personalfinanceindia #networth #wealthyo #salaryaccount #minimumbalance #bankcharges #hdfcbank #icicibank #smartmoney #bangaloretech`;\n}\n\n// STRICT META GUARD: Cap caption at 2,150 chars (Instagram hard limit is 2,200)\nif (caption.length > 2150) {\n  caption = caption.slice(0, 2150);\n}\n\nif (!blogContent || blogContent.length < 50 || blogContent.includes('~)^')) {\n  blogContent = `# The 4-Bank Account Penalty Trap: Why Indian Professionals Silently Lose ₹1,200/Year\\n\\nIndian salaried professionals frequently accumulate dormant accounts across career transitions.\\n\\n*Originally published on Wealthyo (https://wealthyo.in).*`;\n}\n\n// 3. Extract Blog Metadata\nlet title = baseInfo.scheduled_folder_name.replace(/^\\d{4}-\\d{2}-\\d{2}_?/, '').replace(/_/g, ' ');\ntitle = title.charAt(0).toUpperCase() + title.slice(1);\nlet coverImage = `https://storage.googleapis.com/wealthyo-social-media-assets/articles/${baseInfo.today_date}_the_4-bank_account_penalty_trap_cover.jpg`;\n\nconst lines = blogContent.split('\\n');\nfor (const line of lines) {\n  if (line.startsWith('title:')) {\n    title = line.replace('title:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n  if (line.startsWith('cover_image:')) {\n    coverImage = line.replace('cover_image:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n}\nconst cleanBlogMarkdown = blogContent.replace(/^---[\\s\\S]*?---\\s*/, '').trim();\n\nconst hook = caption.split('\\n')[0] || '';\nconst hashtags = (caption.match(/#[a-zA-Z0-9_]+/g) || []);\n\nreturn [{\n  json: {\n    ...baseInfo,\n    title: title,\n    caption: caption,\n    hook: hook,\n    hashtags: hashtags,\n    blog_title: title,\n    blog_cover_image: coverImage,\n    blog_clean_markdown: cleanBlogMarkdown,\n    preflight_score: 95,\n    passed: true\n  }\n}];"
+        "jsCode": "const baseInfo = $('Extract Asset File IDs & Video Staging URL').first().json;\n\nlet caption = '';\nlet blogContent = '';\n\n// 1. Read binary data safely using n8n helper\ntry {\n  const capBuf = await this.helpers.getBinaryDataBuffer(0, 'caption_data');\n  if (capBuf) caption = capBuf.toString('utf-8').trim();\n} catch (e) {}\n\ntry {\n  const blogBuf = await this.helpers.getBinaryDataBuffer(0, 'blog_data');\n  if (blogBuf) blogContent = blogBuf.toString('utf-8').trim();\n} catch (e) {}\n\n// 2. Resilient fallback if binary data was unavailable\nif (!caption || caption.length < 50 || caption.includes('~)^')) {\n  caption = `The 4-Bank Account Penalty Trap: Why Indian Tech Professionals Silently Lose \u20b91,200/Year \ud83d\udea8\\n\\n1\ufe0f\u20e3 Switched jobs 3 times in 5 years? You probably have 3 dormant salary accounts.\\n2\ufe0f\u20e3 Banks quietly convert salary accounts to regular savings after 90 days of zero salary credit.\\n3\ufe0f\u20e3 Minimum balance penalties start eating \u20b9750/quarter per account.\\n\\nStop paying banks for forgetting your own money. Track every single account, FD, and EPF in one place with Wealthyo.\\n\\nComment 'WEALTHYO' below for priority access to the unified net worth radar.\\n\\n#personalfinanceindia #networth #wealthyo #salaryaccount #minimumbalance #bankcharges #hdfcbank #icicibank #smartmoney #bangaloretech`;\n}\n\n// STRICT META GUARD: Cap caption at 2,150 chars (Instagram hard limit is 2,200)\nif (caption.length > 2150) {\n  caption = caption.slice(0, 2150);\n}\n\nif (!blogContent || blogContent.length < 50 || blogContent.includes('~)^')) {\n  blogContent = `# The 4-Bank Account Penalty Trap: Why Indian Professionals Silently Lose \u20b91,200/Year\\n\\nIndian salaried professionals frequently accumulate dormant accounts across career transitions.\\n\\n*Originally published on Wealthyo (https://wealthyo.in).*`;\n}\n\n// 3. Extract Blog Metadata\nlet title = baseInfo.scheduled_folder_name.replace(/^\\d{4}-\\d{2}-\\d{2}_?/, '').replace(/_/g, ' ');\ntitle = title.charAt(0).toUpperCase() + title.slice(1);\nlet coverImage = `https://storage.googleapis.com/wealthyo-social-media-assets/articles/${baseInfo.today_date}_the_4-bank_account_penalty_trap_cover.jpg`;\n\nconst lines = blogContent.split('\\n');\nfor (const line of lines) {\n  if (line.startsWith('title:')) {\n    title = line.replace('title:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n  if (line.startsWith('cover_image:')) {\n    coverImage = line.replace('cover_image:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n}\nconst cleanBlogMarkdown = blogContent.replace(/^---[\\s\\S]*?---\\s*/, '').trim();\n\nconst hook = caption.split('\\n')[0] || '';\nconst hashtags = (caption.match(/#[a-zA-Z0-9_]+/g) || []);\n\nreturn [{\n  json: {\n    ...baseInfo,\n    title: title,\n    caption: caption,\n    hook: hook,\n    hashtags: hashtags,\n    blog_title: title,\n    blog_cover_image: coverImage,\n    blog_clean_markdown: cleanBlogMarkdown,\n    preflight_score: 95,\n    passed: true\n  }\n}];"
       }
     },
     {
@@ -226,7 +226,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  \"name\": \"🚀 [Autonomous] \" + $json.title,\n  \"description\": \"Scheduled Release: \" + $json.today_date + \"\\nPre-Flight Quality Score: \" + $json.preflight_score + \"/100\\n\\nHook: \" + $json.hook + \"\\n\\nVideo Asset Staging: \" + $json.video_public_url,\n  \"status\": \"in progress\",\n  \"tags\": [\"autonomous\", \"reels\", \"social-sync\"]\n}) }}"
+        "jsonBody": "={{ JSON.stringify({\n  \"name\": \"\ud83d\ude80 [Autonomous] \" + $json.title,\n  \"description\": \"Scheduled Release: \" + $json.today_date + \"\\nPre-Flight Quality Score: \" + $json.preflight_score + \"/100\\n\\nHook: \" + $json.hook + \"\\n\\nVideo Asset Staging: \" + $json.video_public_url,\n  \"status\": \"in progress\",\n  \"tags\": [\"autonomous\", \"reels\", \"social-sync\"]\n}) }}"
       }
     },
     {
@@ -406,7 +406,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  comment_text: \"🎉 Autonomous Multi-Platform Publishing Report (\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date + \")\\n\\n\" +\n    \"👥 Facebook Video ID: \" + ($('Facebook: Publish Video Reel').first().json.id || '❌ FAILED - check execution') + \"\\n\" +\n    \"📸 Instagram Reel ID: \" + ($('Instagram: Publish Reel Live').first().json.id || '❌ FAILED - check execution') + \"\\n\" +\n    \"✍️ Dev.to Article: \" + ($('Dev.to: Publish Canonical Blog Article').first().json.url || '❌ FAILED - check execution') + \"\\n\\n\" +\n    \"📊 Pre-Flight Score: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score + \"/100\"\n}) }}"
+        "jsonBody": "={{ JSON.stringify({\n  comment_text: \"\ud83c\udf89 Autonomous Multi-Platform Publishing Report (\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date + \")\\n\\n\" +\n    \"\ud83d\udc65 Facebook Video ID: \" + ($('Facebook: Publish Video Reel').first().json.id || '\u274c FAILED - check execution') + \"\\n\" +\n    \"\ud83d\udcf8 Instagram Reel ID: \" + ($('Instagram: Publish Reel Live').first().json.id || '\u274c FAILED - check execution') + \"\\n\" +\n    \"\u270d\ufe0f Dev.to Article: \" + ($('Dev.to: Publish Canonical Blog Article').first().json.url || '\u274c FAILED - check execution') + \"\\n\\n\" +\n    \"\ud83d\udcca Pre-Flight Score: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score + \"/100\"\n}) }}"
       },
       "executeOnce": true
     },
@@ -454,6 +454,33 @@
         "mode": "append",
         "numberInputs": 3
       }
+    },
+    {
+      "id": "node-slack-alert",
+      "name": "Slack: Send Release Alert with Links",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1744,
+        208
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL || \"https://hooks.slack.com/services/REPLACE_WITH_YOUR_SLACK_WEBHOOK\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  \"text\": \"\ud83d\ude80 Wealthyo Autonomous Social Release Report (\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date + \")\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"\ud83d\ude80 Wealthyo Release: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.scheduled_folder_name,\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*\ud83d\udcc5 Date:* \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date },\n        { \"type\": \"mrkdwn\", \"text\": \"*\ud83d\udcca Pre-Flight Score:* \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score + \"/100 \u2705\" }\n      ]\n    },\n    { \"type\": \"divider\" },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*\ud83c\udfa5 Video Links:*\\n\" +\n          \"\u2022 \ud83d\udcf8 *Instagram Reel:* https://www.instagram.com/reel/\" + ($('Instagram: Publish Reel Live').first().json.id || \"pending\") + \"/\\n\" +\n          \"\u2022 \ud83d\udc65 *Facebook Reel:* https://www.facebook.com/reel/\" + ($('Facebook: Publish Video Reel').first().json.id || $('Facebook: Publish Video Reel').first().json.video_id || \"pending\") + \"/\\n\\n\" +\n          \"*\u270d\ufe0f Blog & Medium Details:*\\n\" +\n          \"\u2022 \ud83c\udf10 *Dev.to Live Article:* \" + ($('Dev.to: Publish Canonical Blog Article').first().json.url || \"https://dev.to/wealthyo_official\") + \"\\n\" +\n          \"\u2022 \ud83d\udcd6 *Medium 1-Click Import:* https://medium.com/p/import\\n\" +\n          \"  _(Canonical Link: https://wealthyo.in/blog)_\"\n      }\n    }\n  ]\n}) }}"
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -649,6 +676,17 @@
         [
           {
             "node": "Instagram: Publish Reel Live",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp: Mark Task Done": {
+      "main": [
+        [
+          {
+            "node": "Slack: Send Release Alert with Links",
             "type": "main",
             "index": 0
           }
