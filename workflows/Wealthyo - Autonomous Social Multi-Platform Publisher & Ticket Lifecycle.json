@@ -216,7 +216,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ .CLICKUP_API_TOKEN }}"
+              "value": "={{ $env.CLICKUP_API_TOKEN }}"
             },
             {
               "name": "Content-Type",
@@ -254,11 +254,11 @@
             },
             {
               "name": "description",
-              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.caption }}"
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.caption }}"
             },
             {
               "name": "access_token",
-              "value": "={{ .META_ACCESS_TOKEN }}"
+              "value": "={{ $env.META_ACCESS_TOKEN }}"
             }
           ]
         }
@@ -285,15 +285,15 @@
             },
             {
               "name": "video_url",
-              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.video_public_url }}"
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.video_public_url }}"
             },
             {
               "name": "caption",
-              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').item.json.caption }}"
+              "value": "={{ $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.caption }}"
             },
             {
               "name": "access_token",
-              "value": "={{ .META_ACCESS_TOKEN }}"
+              "value": "={{ $env.META_ACCESS_TOKEN }}"
             }
           ]
         }
@@ -301,7 +301,7 @@
     },
     {
       "id": "node-wait-meta-transcoding",
-      "name": "Wait for Meta Video Transcoding (30s)",
+      "name": "Wait for Meta Video Transcoding (45s)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
@@ -309,7 +309,7 @@
         208
       ],
       "parameters": {
-        "amount": 30,
+        "amount": 45,
         "unit": "seconds"
       }
     },
@@ -330,11 +330,11 @@
           "parameters": [
             {
               "name": "creation_id",
-              "value": "={{ $('Instagram: Init Reel Container').item.json.id }}"
+              "value": "={{ $('Instagram: Init Reel Container').first().json.id }}"
             },
             {
               "name": "access_token",
-              "value": "={{ .META_ACCESS_TOKEN }}"
+              "value": "={{ $env.META_ACCESS_TOKEN }}"
             }
           ]
         }
@@ -357,7 +357,7 @@
           "parameters": [
             {
               "name": "api-key",
-              "value": "={{ .DEVTO_API_KEY }}"
+              "value": "={{ $env.DEVTO_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -385,13 +385,13 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "=https://api.clickup.com/api/v2/task/{{ $('ClickUp: Create Video Calendar Task').item.json.id }}/comment",
+        "url": "https://api.clickup.com/api/v2/task/={{ $('ClickUp: Create Video Calendar Task').first().json.id }}/comment",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ .CLICKUP_API_TOKEN }}"
+              "value": "={{ $env.CLICKUP_API_TOKEN }}"
             },
             {
               "name": "Content-Type",
@@ -401,7 +401,8 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  \"comment_text\": \"### \ud83c\udf89 Autonomous Multi-Platform Publishing Completed!\\n\\n- \ud83d\udcf8 **Instagram Reel ID**: \" + ($('Instagram: Publish Reel Live').item.json?.id || 'Published') + \"\\n- \ud83d\udc65 **Facebook Reel Video ID**: \" + ($('Facebook: Publish Video Reel').item.json?.id || 'Published') + \"\\n- \u270d\ufe0f **Dev.to Article**: \" + ($('Dev.to: Publish Canonical Blog Article').item.json?.url || 'Published') + \"\\n\\nAssets read autonomously from Google Drive calendar.\"\n}) }}"
+        "jsonBody": "={{ JSON.stringify({\n  \"comment_text\": \"### \ud83c\udf89 Autonomous Multi-Platform Publishing Completed!\\n\\n- \ud83d\udcf8 **Instagram Reel ID**: \" + ($('Instagram: Publish Reel Live').item.json?.id || 'Published') + \"\\n- \ud83d\udc65 **Facebook Reel Video ID**: \" + ($('Facebook: Publish Video Reel').item.json?.id || 'Published') + \"\\n- \u270d\ufe0f **Dev.to Article**: \" + ($('Dev.to: Publish Canonical Blog Article').item.json?.url || 'Published') + \"\\n\\nAssets read autonomously from Google Drive calendar.\"\n}) }}",
+        "body": "={{ JSON.stringify({\n  comment_text: `\ud83d\ude80 Automated Multi-Platform Release Report (${$('Pre-Flight Content Quality Scorer & Sanitizer').first().json.scheduled_date})\\n\\n` +\n    `\ud83d\udccc ClickUp Task: #${$('ClickUp: Create Video Calendar Task').first().json.id}\\n` +\n    `\ud83d\udc65 Facebook Reel ID: ${$('Facebook: Publish Video Reel').first().json.id || $('Facebook: Publish Video Reel').first().json.video_id}\\n` +\n    `\ud83d\udcf8 Instagram Reel ID: ${$('Instagram: Publish Reel Live').first().json.id}\\n` +\n    `\u270d\ufe0f Dev.to Article: ${$('Dev.to: Publish Canonical Blog Article').first().json.url || $('Dev.to: Publish Canonical Blog Article').first().json.canonical_url}\\n\\n` +\n    `\ud83d\udcca Pre-Flight Quality Score: ${$('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score}/100 \u2705`\n}) }}"
       }
     },
     {
@@ -415,13 +416,13 @@
       ],
       "parameters": {
         "method": "PUT",
-        "url": "=https://api.clickup.com/api/v2/task/{{ $('ClickUp: Create Video Calendar Task').item.json.id }}",
+        "url": "https://api.clickup.com/api/v2/task/={{ $('ClickUp: Create Video Calendar Task').first().json.id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ .CLICKUP_API_TOKEN }}"
+              "value": "={{ $env.CLICKUP_API_TOKEN }}"
             },
             {
               "name": "Content-Type",
@@ -562,14 +563,14 @@
       "main": [
         [
           {
-            "node": "Wait for Meta Video Transcoding (30s)",
+            "node": "Wait for Meta Video Transcoding (45s)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait for Meta Video Transcoding (30s)": {
+    "Wait for Meta Video Transcoding (45s)": {
       "main": [
         [
           {
