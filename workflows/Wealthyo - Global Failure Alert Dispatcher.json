@@ -23,7 +23,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SLACK_WEBHOOK_URL || \"https://hooks.slack.com/services/REPLACE_WITH_YOUR_SLACK_WEBHOOK\" }}",
+        "url": "={{ $env.SLACK_FAILURES_WEBHOOK_URL || \"https://hooks.slack.com/services/REPLACE_WITH_YOUR_SLACK_WEBHOOK\" }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
