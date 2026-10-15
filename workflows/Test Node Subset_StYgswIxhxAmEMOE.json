@@ -1,0 +1,30 @@
+{
+  "name": "Test Node Subset",
+  "nodes": [
+    {
+      "id": "5bf8cf34-25c0-4482-95e7-4c7f138c6739",
+      "name": "Webhook: /webhook/wealthyo/alerts/send-email",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {},
+        "path": "wealthyo/alerts/send-email"
+      },
+      "position": [
+        896,
+        320
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "webhookId": "6e0e40eb-dbda-44ad-8477-018a90c9c85c"
+    }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": {
+    "availableInMCP": true
+  },
+  "versionId": "b4e85a7a-3505-458e-a692-43137305a7a7",
+  "id": "StYgswIxhxAmEMOE",
+  "meta": null,
+  "tags": []
+}

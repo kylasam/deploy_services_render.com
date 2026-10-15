@@ -1,0 +1,68 @@
+{
+  "name": "Test Step 2",
+  "nodes": [
+    {
+      "id": "9f4c22f2-30fb-4d39-8c71-2d9c34b0947e",
+      "name": "Schedule: Every 10 Minutes",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "position": [
+        896,
+        528
+      ],
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "57a94d11-fee6-4838-8d59-04444ab36da8",
+      "name": "Fetch Active Alerts from BigQuery Table",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "options": {},
+        "projectId": "wealthyo",
+        "sqlQuery": "SELECT * FROM `wealthyo.wealthyo_admin.alerts_snapshot`;"
+      },
+      "position": [
+        1136,
+        528
+      ],
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Schedule: Every 10 Minutes": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch Active Alerts from BigQuery Table",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "availableInMCP": true
+  },
+  "versionId": "6beb9dbc-8022-4b5c-80f3-bd1553e6b6d5",
+  "id": "GoBQ5WzBp71uKkGt",
+  "meta": null,
+  "tags": []
+}

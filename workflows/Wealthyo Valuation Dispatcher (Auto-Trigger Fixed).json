@@ -1,0 +1,13 @@
+{
+  "name": "Wealthyo Valuation Dispatcher (Auto-Trigger Fixed)",
+  "nodes": [],
+  "connections": {},
+  "active": false,
+  "settings": {
+    "availableInMCP": true
+  },
+  "versionId": "3e2f1f2b-dd89-4b6a-99d1-338743de606d",
+  "id": "vGipU2WnA3zU7hWl",
+  "meta": null,
+  "tags": []
+}

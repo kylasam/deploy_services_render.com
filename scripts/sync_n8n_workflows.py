@@ -87,6 +87,8 @@ def sanitize_secrets_in_json(obj_str):
     obj_str = re.sub(r'glsa_[A-Za-z0-9_-]{25,}', 'YOUR_GRAFANA_TOKEN', obj_str)
     # 6. Google API Keys (AIzaSy...)
     obj_str = re.sub(r'AIzaSy[A-Za-z0-9_-]{30,}', 'YOUR_GOOGLE_API_KEY', obj_str)
+    # 7. Slack Incoming Webhooks (hooks.slack.com/services/...)
+    obj_str = re.sub(r'https://hooks\.slack\.com/services/[A-Za-z0-9/_-]+', 'YOUR_SLACK_WEBHOOK_URL', obj_str)
     return obj_str
 
 def main():

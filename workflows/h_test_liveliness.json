@@ -78,7 +78,7 @@
   },
   "active": true,
   "settings": {
-    "availableInMCP": false,
+    "availableInMCP": true,
     "callerPolicy": "workflowsFromSameOwner",
     "executionOrder": "v1",
     "executionTimeout": 60,

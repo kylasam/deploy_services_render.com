@@ -2,29 +2,20 @@
   "name": "Wealthyo - Global Failure Alert Dispatcher",
   "nodes": [
     {
-      "id": "node-error-trigger",
+      "id": "17231526-3f97-4e62-b864-a4d46cc929fd",
       "name": "Error Trigger",
-      "type": "n8n-nodes-base.errorTrigger",
-      "typeVersion": 1,
+      "parameters": {},
       "position": [
-        250,
-        300
+        0,
+        0
       ],
-      "parameters": {}
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1
     },
     {
-      "id": "node-slack-error-alert",
+      "id": "4fa5a9ce-ee8f-46c0-a3cc-e421eff8aeb3",
       "name": "Slack: Dispatch Failure Alert",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [
-        500,
-        300
-      ],
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SLACK_FAILURES_WEBHOOK_URL }}",
-        "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
@@ -33,10 +24,20 @@
             }
           ]
         },
+        "jsonBody": "={{ JSON.stringify({\n  \"text\": \"🚨 [FAILURE ALERT] n8n Workflow Error: \" + ($json.workflow.name || \"Unknown Workflow\"),\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"🚨 n8n Workflow Execution Failed\",\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*🔄 Workflow:* \" + ($json.workflow.name || \"Unknown Workflow\")\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*❌ Failed Node:* `\" + (($json.execution.error && $json.execution.error.node && $json.execution.error.node.name) || $json.execution.lastNodeExecuted || \"Unknown Node\") + \"`\"\n        }\n      ]\n    },\n    {\n      \"type\": \"divider\"\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*⚠️ Error Details:*\\n```\" + (($json.execution.error && $json.execution.error.message) || \"An unexpected error occurred during execution.\") + \"```\\n\\n*🔗 Execution ID:* `\" + $json.execution.id + \"`\"\n      }\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": {\n            \"type\": \"plain_text\",\n            \"text\": \"🔍 View Execution in n8n\",\n            \"emoji\": true\n          },\n          \"url\": \"https://n8n-fggh.onrender.com/workflow/\" + $json.workflow.id + \"/executions/\" + $json.execution.id,\n          \"style\": \"danger\"\n        }\n      ]\n    }\n  ]\n}) }}",
+        "method": "POST",
+        "options": {},
         "sendBody": true,
+        "sendHeaders": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  \"text\": \"\ud83d\udea8 [FAILURE ALERT] n8n Workflow Error: \" + ($json.workflow.name || \"Unknown Workflow\"),\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"\ud83d\udea8 n8n Workflow Execution Failed\",\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*\ud83d\udd04 Workflow:* \" + ($json.workflow.name || \"Unknown Workflow\")\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*\u274c Failed Node:* `\" + (($json.execution.error && $json.execution.error.node && $json.execution.error.node.name) || $json.execution.lastNodeExecuted || \"Unknown Node\") + \"`\"\n        }\n      ]\n    },\n    {\n      \"type\": \"divider\"\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*\u26a0\ufe0f Error Details:*\\n```\" + (($json.execution.error && $json.execution.error.message) || \"An unexpected error occurred during execution.\") + \"```\\n\\n*\ud83d\udd17 Execution ID:* `\" + $json.execution.id + \"`\"\n      }\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": {\n            \"type\": \"plain_text\",\n            \"text\": \"\ud83d\udd0d View Execution in n8n\",\n            \"emoji\": true\n          },\n          \"url\": \"https://n8n-fggh.onrender.com/workflow/\" + $json.workflow.id + \"/executions/\" + $json.execution.id,\n          \"style\": \"danger\"\n        }\n      ]\n    }\n  ]\n}) }}"
-      }
+        "url": "={{ $env.SLACK_WEBHOOK_URL || \"YOUR_SLACK_WEBHOOK_URL\" }}"
+      },
+      "position": [
+        256,
+        0
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
     }
   ],
   "connections": {
@@ -44,16 +45,22 @@
       "main": [
         [
           {
+            "index": 0,
             "node": "Slack: Dispatch Failure Alert",
-            "type": "main",
-            "index": 0
+            "type": "main"
           }
         ]
       ]
     }
   },
+  "active": true,
   "settings": {
-    "executionOrder": "v1",
-    "timezone": "Asia/Kolkata"
-  }
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "executionOrder": "v1"
+  },
+  "versionId": "c73a5471-7970-4883-88d3-1595e97ac2f6",
+  "id": "ykngoIBwQiq2aZ8a",
+  "meta": null,
+  "tags": []
 }

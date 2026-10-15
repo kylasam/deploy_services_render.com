@@ -316,7 +316,7 @@
   },
   "active": true,
   "settings": {
-    "availableInMCP": false,
+    "availableInMCP": true,
     "executionOrder": "v1"
   },
   "versionId": "63fa7098-f107-4e8a-8262-a1147b95e1f6",

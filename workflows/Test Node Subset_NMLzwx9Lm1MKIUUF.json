@@ -1,0 +1,63 @@
+{
+  "name": "Test Node Subset",
+  "nodes": [
+    {
+      "id": "bad1d21d-268d-4ea5-adfc-d6c83df508f6",
+      "name": "Dispatch Batch Emails via Resend API",
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.to }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "html",
+              "value": "={{ $json.html }}"
+            }
+          ]
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_RESEND_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "url": "https://api.resend.com/emails"
+      },
+      "position": [
+        1616,
+        432
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": {
+    "availableInMCP": true
+  },
+  "versionId": "087efc9b-aed6-4292-ac42-0a6bc135646f",
+  "id": "NMLzwx9Lm1MKIUUF",
+  "meta": null,
+  "tags": []
+}

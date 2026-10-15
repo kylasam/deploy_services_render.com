@@ -1,0 +1,36 @@
+{
+  "name": "Test Node Subset",
+  "nodes": [
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "8b45d139-9b61-44cf-af34-aebc4236b8f3",
+      "name": "Log Email Sent to BigQuery Table",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "options": {},
+        "projectId": "wealthyo",
+        "sqlQuery": "INSERT INTO `wealthyo.wealthyo_admin.resend_email_events` (email_id, event_type, category, recipient, subject, status, created_at) VALUES ('{{ $json.id || \"re_\" + Date.now() }}', 'email_delivered', 'Executive Valuation Dues', 'arusamy71053@gmail.com', '💰 [VALUATION STATEMENT] Wealthyo Household Asset & Net Worth Numbers', 'Delivered', CURRENT_TIMESTAMP());"
+      },
+      "position": [
+        1856,
+        432
+      ],
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2
+    }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": {
+    "availableInMCP": true
+  },
+  "versionId": "5c109f22-abeb-4ccb-8799-877105f482d5",
+  "id": "ZXFuq6slxCQ11rch",
+  "meta": null,
+  "tags": []
+}

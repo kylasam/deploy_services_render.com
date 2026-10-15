@@ -1,0 +1,97 @@
+{
+  "name": "Test Step 2",
+  "nodes": [
+    {
+      "id": "bad1d21d-268d-4ea5-adfc-d6c83df508f6",
+      "name": "Dispatch Batch Emails via Resend API",
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.to }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "html",
+              "value": "={{ $json.html }}"
+            }
+          ]
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_RESEND_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "sendHeaders": true,
+        "url": "https://api.resend.com/emails"
+      },
+      "position": [
+        1616,
+        432
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1
+    },
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "8b45d139-9b61-44cf-af34-aebc4236b8f3",
+      "name": "Log Email Sent to BigQuery Table",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "options": {},
+        "projectId": "wealthyo",
+        "sqlQuery": "INSERT INTO `wealthyo.wealthyo_admin.resend_email_events` (email_id, event_type, category, recipient, subject, status, created_at) VALUES ('{{ $json.id || \"re_\" + Date.now() }}', 'email_delivered', 'Executive Valuation Dues', 'arusamy71053@gmail.com', '💰 [VALUATION STATEMENT] Wealthyo Household Asset & Net Worth Numbers', 'Delivered', CURRENT_TIMESTAMP());"
+      },
+      "position": [
+        1856,
+        432
+      ],
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Dispatch Batch Emails via Resend API": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Log Email Sent to BigQuery Table",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "availableInMCP": true
+  },
+  "versionId": "5c69a3a9-efe7-4bb0-a199-9ae4d1f72d44",
+  "id": "bcvi0mg2mtq08lbg",
+  "meta": null,
+  "tags": []
+}

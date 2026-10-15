@@ -1,0 +1,36 @@
+{
+  "name": "Test Node Subset",
+  "nodes": [
+    {
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "id": "57a94d11-fee6-4838-8d59-04444ab36da8",
+      "name": "Fetch Active Alerts from BigQuery Table",
+      "parameters": {
+        "authentication": "serviceAccount",
+        "options": {},
+        "projectId": "wealthyo",
+        "sqlQuery": "SELECT * FROM `wealthyo.wealthyo_admin.alerts_snapshot`;"
+      },
+      "position": [
+        1136,
+        528
+      ],
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2
+    }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": {
+    "availableInMCP": true
+  },
+  "versionId": "f40225c7-798a-4920-8b64-95f457f2dbfb",
+  "id": "dyKjYDtMr3cGs7i6",
+  "meta": null,
+  "tags": []
+}

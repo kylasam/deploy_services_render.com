@@ -1,0 +1,353 @@
+{
+  "name": "Wealthyo - Reddit Lead Radar & BQ Ingestion",
+  "nodes": [
+    {
+      "id": "node-schedule-2h",
+      "name": "Schedule: Every 2 Hours (Radar Pulse)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1200,
+        200
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */2 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-fetch-reddit-rss",
+      "name": "Fetch Subreddit RSS Feed (pfi + IndiaInvestments)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -980,
+        200
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.reddit.com/r/personalfinanceindia+IndiaInvestments/.rss",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "WealthyoRadar/1.0 (contact@wealthyo.in; /u/wealthyo_official)"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "node-parse-rss-filter",
+      "name": "Parse XML & Filter Last 2h Target Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const rawXml = $input.first().json.data || $input.first().json.body || '';\nif (!rawXml) return [];\n\nconst TARGET_KEYWORDS = {\n  rental_property: ['rent', 'rental', 'tenant', 'landlord', '11 month', '194-ib', 'tds on rent', 'property tax', 'yield'],\n  land_real_estate: ['land', 'plot', 'flat', 'apartment', 'patta', 'khata', 'registry', 'encumbrance', 'rera'],\n  gold_sgb: ['gold', 'sgb', 'sovereign gold bond', 'gold chit', 'jewellery', 'hallmark', 'digital gold', 'tanishq'],\n  banking_penalties: ['salary account', 'savings account', 'mab', 'minimum balance', 'penalty', 'hdfc', 'icici', 'sbi', 'axis'],\n  investing_portfolio: ['mutual fund', 'sip', 'demat', 'zerodha', 'groww', 'indmoney', 'overlap', 'direct fund', 'net worth', 'emergency fund', 'asset allocation'],\n  tax_planning: ['80c', 'old regime', 'new regime', 'ltcg', 'stcg', 'tax saving', 'itr', 'capital gains']\n};\n\nconst entryMatches = rawXml.match(/<entry[\\s\\S]*?<\\/entry>/gi) || [];\nconst candidates = [];\nconst now = Date.now();\n\nfor (const entry of entryMatches) {\n  const idMatch = entry.match(/<id>([^<]+)<\\/id>/i);\n  const titleMatch = entry.match(/<title>([^<]+)<\\/title>/i);\n  const linkMatch = entry.match(/<link[^>]+href=[\"']([^\"']+)[\"']/i);\n  const authorMatch = entry.match(/<author>[\\s\\S]*?<name>([^<]+)<\\/name>/i);\n  const updatedMatch = entry.match(/<updated>([^<]+)<\\/updated>/i);\n  const contentMatch = entry.match(/<content[^>]*>([\\s\\S]*?)<\\/content>/i);\n\n  const rawContent = contentMatch ? contentMatch[1] : '';\n  const decoded = rawContent\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&amp;/g, '&')\n    .replace(/&quot;/g, '\"')\n    .replace(/&#32;/g, ' ');\n  const cleanText = decoded.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n\n  const postTime = updatedMatch ? new Date(updatedMatch[1]).getTime() : now;\n  const ageHours = (now - postTime) / (1000 * 60 * 60);\n\n  // Look back window: 2 hours\n  if (ageHours > 2.0) continue;\n\n  const title = titleMatch ? titleMatch[1].trim() : '';\n  const url = linkMatch ? linkMatch[1] : '';\n  const author = authorMatch ? authorMatch[1].replace(/^\\/u\\//, '') : 'anonymous';\n  const postId = idMatch ? idMatch[1].replace(/^t3_/, '') : '';\n\n  let subreddit = 'personalfinanceindia';\n  if (url.includes('/r/IndiaInvestments/')) subreddit = 'IndiaInvestments';\n\n  const corpus = (title + ' ' + cleanText).toLowerCase();\n  const matchedTags = [];\n\n  for (const [tag, kws] of Object.entries(TARGET_KEYWORDS)) {\n    for (const kw of kws) {\n      const re = new RegExp('\\\\b' + kw + '\\\\b', 'i');\n      if (re.test(corpus)) {\n        matchedTags.push(tag);\n        break;\n      }\n    }\n  }\n\n  if (matchedTags.length > 0) {\n    candidates.push({\n      postId,\n      subreddit,\n      title,\n      author,\n      selftext: cleanText.slice(0, 3000),\n      url,\n      updated: updatedMatch ? updatedMatch[1] : new Date().toISOString(),\n      ageHours: parseFloat(ageHours.toFixed(1)),\n      matchedTags\n    });\n  }\n}\n\nreturn candidates.map(c => ({ json: c }));"
+      }
+    },
+    {
+      "id": "node-if-has-candidates",
+      "name": "Has Qualifying 2h Posts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -540,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.postId }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-bq-check-existing",
+      "name": "BigQuery: Query Existing Post IDs",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        180
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "parameters": {
+        "authentication": "serviceAccount",
+        "projectId": "wealthyo",
+        "sqlQuery": "SELECT post_id FROM `wealthyo.wealthyo_admin.reddit_leads` WHERE created_utc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 DAY)"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "node-code-filter-unseen",
+      "name": "Filter Out Already Seen Post IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const existingRows = $('BigQuery: Query Existing Post IDs').all().map(i => i.json.post_id);\nconst seenSet = new Set(existingRows.filter(Boolean));\n\nconst candidates = $('Parse XML & Filter Last 2h Target Topics').all().map(i => i.json);\nconst unseen = candidates.filter(c => c.postId && !seenSet.has(c.postId));\n\nreturn unseen.map(item => ({ json: item }));"
+      }
+    },
+    {
+      "id": "node-if-has-unseen",
+      "name": "Has Unseen Leads?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        120,
+        180
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.postId }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-gemini-generate-reply",
+      "name": "Gemini: Generate Empathetic Community Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        340,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [\n        {\n          \"text\": \"You are an empathetic, insightful Indian personal finance expert responding to a community question on Reddit in r/\" + $json.subreddit + \".\\n\\nQuestion Title: \" + $json.title + \"\\nUser Content: \" + $json.selftext.slice(0, 800) + \"\\nDetected Topic: \" + $json.matchedTags.join(', ') + \"\\n\\nInstructions:\\n1. Write a structured, empathetic 3-bullet advice reply in clean Reddit Markdown format.\\n2. Address the user's specific pain point directly with practical calculations or Indian regulations (e.g., Section 194-IB for rental TDS, RBI 3-month salary account conversion rule, LTCG tax rules, etc.).\\n3. Be conversational, direct, and genuinely helpful.\\n4. STRICT COMPLIANCE: DO NOT mention any product pitch, promotional links, or call to sign up. Provide pure value.\\n5. Keep the total response under 150 words.\"\n        }\n      ]\n    }\n  ]\n}) }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "node-code-format-payloads",
+      "name": "Format BQ Row & Slack Block Kit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ],
+      "parameters": {
+        "jsCode": "const geminiRes = $input.first().json;\nlet aiDraft = '';\ntry {\n  aiDraft = geminiRes.candidates[0].content.parts[0].text.trim();\n} catch (e) {\n  aiDraft = '• **Analyze the core cash flow first**: Calculate the exact post-tax net yield and hidden costs before committing.\\n• **Verify regulatory thresholds**: Keep track of TDS compliance (e.g. Section 194-IB) and bank conversion rules.\\n• **Keep clear digital records**: Consolidate agreements and statements in one place to avoid penalty surprises.';\n}\n\nconst lead = $('Filter Out Already Seen Post IDs').first().json;\n\nfunction escapeSql(str) {\n  if (!str) return '';\n  return String(str).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, \"\\\\'\").replace(/\\r/g, '').replace(/\\n/g, ' ');\n}\n\nconst safeTitle = escapeSql(lead.title);\nconst safeAuthor = escapeSql(lead.author);\nconst safeSelftext = escapeSql(lead.selftext.slice(0, 3000));\nconst safeAiDraft = escapeSql(aiDraft);\nconst tagsArraySql = '[' + lead.matchedTags.map(t => \"'\" + escapeSql(t) + \"'\").join(',') + ']';\n\nconst bqSql = `INSERT INTO \\`wealthyo.wealthyo_admin.reddit_leads\\` (post_id, subreddit, title, author, selftext, url, permalink, created_utc, score, num_comments, matched_keywords, ai_draft_reply, alerted_slack_at, status, inserted_at) VALUES ('${lead.postId}', '${lead.subreddit}', '${safeTitle}', '${safeAuthor}', '${safeSelftext}', '${lead.url}', '${lead.url}', TIMESTAMP('${lead.updated}'), 1, 0, ${tagsArraySql}, '${safeAiDraft}', CURRENT_TIMESTAMP(), 'ALERTED', CURRENT_TIMESTAMP())`;\n\nconst excerpt = lead.selftext.length > 250 ? (lead.selftext.slice(0, 250) + '...') : lead.selftext;\nconst ageStr = lead.ageHours < 1.0 ? `${Math.round(lead.ageHours * 60)} mins ago` : `${lead.ageHours} hrs ago`;\n\nconst slackBlocks = [\n  {\n    type: 'header',\n    text: {\n      type: 'plain_text',\n      text: `🚨 Reddit Personal Finance Lead (r/${lead.subreddit})`,\n      emoji: true\n    }\n  },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: `<${lead.url}|*${lead.title}*>\\n*Author:* \\`/u/${lead.author}\\` • *Posted:* \\`${ageStr}\\` • *Tags:* \\`${lead.matchedTags.join(', ')}\\``\n    }\n  },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: `*Dilemma / Excerpt:*\\n>${excerpt}`\n    }\n  },\n  { type: 'divider' },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: `*💡 1-Click Auto-Reply Draft (Copy & Paste):*\\n\\`\\`\\`\\n${aiDraft}\\n\\`\\`\\``\n    }\n  },\n  {\n    type: 'actions',\n    elements: [\n      {\n        type: 'button',\n        text: {\n          type: 'plain_text',\n          text: '💬 Open & Reply on Reddit ↗',\n          emoji: true\n        },\n        style: 'primary',\n        url: lead.url\n      },\n      {\n        type: 'button',\n        text: {\n          type: 'plain_text',\n          text: `📁 View r/${lead.subreddit}`,\n          emoji: true\n        },\n        url: `https://www.reddit.com/r/${lead.subreddit}/`\n      }\n    ]\n  }\n];\n\nreturn [{\n  json: {\n    ...lead,\n    aiDraft,\n    bqSql,\n    slackPayload: {\n      text: `🚨 Reddit Lead (${lead.subreddit}): ${lead.title.slice(0, 60)}`,\n      blocks: slackBlocks\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-bq-insert-lead",
+      "name": "BigQuery: Insert New Lead Record",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2,
+      "position": [
+        780,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "bASwMsmwad1HlC6B",
+          "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
+        }
+      },
+      "parameters": {
+        "authentication": "serviceAccount",
+        "projectId": "wealthyo",
+        "sqlQuery": "={{ $json.bqSql }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "node-slack-send-lead",
+      "name": "Slack: Send 2h Lead Alert with 1-Click Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1000,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL || \"https://hooks.slack.com/services/REPLACE_WITH_YOUR_SLACK_WEBHOOK\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Format BQ Row & Slack Block Kit').first().json.slackPayload) }}"
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule: Every 2 Hours (Radar Pulse)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Subreddit RSS Feed (pfi + IndiaInvestments)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Subreddit RSS Feed (pfi + IndiaInvestments)": {
+      "main": [
+        [
+          {
+            "node": "Parse XML & Filter Last 2h Target Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse XML & Filter Last 2h Target Topics": {
+      "main": [
+        [
+          {
+            "node": "Has Qualifying 2h Posts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Qualifying 2h Posts?": {
+      "main": [
+        [
+          {
+            "node": "BigQuery: Query Existing Post IDs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "BigQuery: Query Existing Post IDs": {
+      "main": [
+        [
+          {
+            "node": "Filter Out Already Seen Post IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Out Already Seen Post IDs": {
+      "main": [
+        [
+          {
+            "node": "Has Unseen Leads?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Unseen Leads?": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Generate Empathetic Community Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Gemini: Generate Empathetic Community Reply": {
+      "main": [
+        [
+          {
+            "node": "Format BQ Row & Slack Block Kit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format BQ Row & Slack Block Kit": {
+      "main": [
+        [
+          {
+            "node": "BigQuery: Insert New Lead Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BigQuery: Insert New Lead Record": {
+      "main": [
+        [
+          {
+            "node": "Slack: Send 2h Lead Alert with 1-Click Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "errorWorkflow": "ykngoIBwQiq2aZ8a"
+  }
+}

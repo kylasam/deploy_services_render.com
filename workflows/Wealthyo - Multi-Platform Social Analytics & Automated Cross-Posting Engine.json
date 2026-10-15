@@ -560,6 +560,7 @@
   },
   "active": true,
   "settings": {
+    "availableInMCP": true,
     "binaryMode": "separate",
     "executionOrder": "v1"
   },
