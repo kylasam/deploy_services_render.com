@@ -3,7 +3,8 @@
   "settings": {
     "executionOrder": "v1",
     "timezone": "Asia/Kolkata",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "errorWorkflow": "ykngoIBwQiq2aZ8a"
   },
   "nodes": [
     {
