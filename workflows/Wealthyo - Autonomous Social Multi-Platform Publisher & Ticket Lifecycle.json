@@ -375,7 +375,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  \"article\": {\n    \"title\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_title,\n    \"published\": true,\n    \"body_markdown\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_clean_markdown + \"\\n\\n---\\n*Originally published on [Wealthyo](https://wealthyo.in).*\",\n    \"tags\": [\"personalfinance\", \"wealth\", \"investing\", \"india\"],\n    \"canonical_url\": \"https://wealthyo.in/blog\",\n    \"main_image\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_cover_image || undefined\n  }\n}) }}"
+        "jsonBody": "={{ JSON.stringify({\n  \"article\": {\n    \"title\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_title,\n    \"published\": true,\n    \"body_markdown\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_clean_markdown + \"\\n\\n---\\n*Originally published on [Wealthyo](https://wealthyo.in).*\",\n    \"tags\": [\"personalfinance\", \"wealth\", \"investing\", \"india\"],\n    \"canonical_url\": \"https://wealthyo.in/blog/\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date,\n    \"main_image\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_cover_image || undefined\n  }\n}) }}"
       },
       "onError": "continueRegularOutput"
     },
