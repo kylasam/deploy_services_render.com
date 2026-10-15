@@ -1,0 +1,130 @@
+{
+  "name": "Wealthyo - Saturday Reddit Content Reminder (ClickUp to Slack)",
+  "nodes": [
+    {
+      "id": "node-schedule-saturday",
+      "name": "Schedule: Every Saturday (10:00 AM IST - Weekend Golden Window)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -600,
+        200
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 6"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-clickup-fetch-tasks",
+      "name": "ClickUp: Fetch Calendar Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -380,
+        200
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.clickup.com/api/v2/list/901223188574/task?archived=false",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.CLICKUP_API_TOKEN }}"
+            }
+          ]
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "node-code-resolve-saturday-topic",
+      "name": "Resolve Saturday Discussion Content & 1-Click Links",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const tasks = ($input.first().json && $input.first().json.tasks) || [];\n\nlet matchedTaskId = '869fg6uf0';\nlet discussionTitle = 'How are you tracking multiple rental properties, 11-month lease expiries, and Section 194-IB TDS?';\nlet discussionBody = `Hey everyone,\\n\\nMost personal finance apps in India (INDmoney, Fold, Groww) focus exclusively on stocks and mutual funds, but completely ignore real estate and rental income.\\n\\nFor those of you managing 1–2 rental apartments or commercial shops in India, how are you handling:\\n1. 11-month lease expiry countdowns and tenant deposit deduction records?\\n2. TDS deduction reconciliation (Section 194-IB if rent > ₹50,000/mo)?\\n3. True Net Rental Yield calculation after society maintenance, brokerage, and property tax?\\n\\nCurious what systems or spreadsheets others here use to manage tenant cashflow.`;\n\nfor (const t of tasks) {\n  const nameLower = (t.name || '').toLowerCase();\n  if (nameLower.includes('reddit') || nameLower.includes('sgb') || nameLower.includes('rental') || nameLower.includes('bank')) {\n    matchedTaskId = t.id;\n    break;\n  }\n}\n\nconst titleEncoded = encodeURIComponent(discussionTitle);\nconst bodyEncoded = encodeURIComponent(discussionBody);\n\nconst redditPfiSubmitUrl = `https://www.reddit.com/r/personalfinanceindia/submit?title=${titleEncoded}&text=${bodyEncoded}`;\nconst redditIiSubmitUrl = `https://www.reddit.com/r/IndiaInvestments/submit?title=${titleEncoded}&text=${bodyEncoded}`;\n\nconst slackBlocks = [\n  {\n    type: 'header',\n    text: {\n      type: 'plain_text',\n      text: '📢 Saturday Reddit Discussion Reminder (Weekend Golden Window)',\n      emoji: true\n    }\n  },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: '🌟 *Peak Saturday Engagement Window is Live (10:00 AM – 1:00 PM IST)!*\\nPosting community discussion questions on Saturday morning drives 4x higher comments & karma in Indian personal finance subreddits.'\n    }\n  },\n  {\n    type: 'section',\n    fields: [\n      { type: 'mrkdwn', text: '*🎯 Target Subreddits:* `r/personalfinanceindia`, `r/IndiaInvestments`' },\n      { type: 'mrkdwn', text: '*🏷️ Flairs:* `Real Estate`, `Discussion` }\n    ]\n  },\n  { type: 'divider' },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: `*📌 Ready-to-Post Title:*\\n\\`${discussionTitle}\\``\n    }\n  },\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: `*📝 Ready-to-Post Content:*\\n\\`\\`\\`\\n${discussionBody}\\n\\`\\`\\``\n    }\n  },\n  {\n    type: 'actions',\n    elements: [\n      {\n        type: 'button',\n        text: {\n          type: 'plain_text',\n          text: '🚀 1-Click Post to r/personalfinanceindia ↗',\n          emoji: true\n        },\n        style: 'primary',\n        url: redditPfiSubmitUrl\n      },\n      {\n        type: 'button',\n        text: {\n          type: 'plain_text',\n          text: '📊 1-Click Post to r/IndiaInvestments ↗',\n          emoji: true\n        },\n        url: redditIiSubmitUrl\n      },\n      {\n        type: 'button',\n        text: {\n          type: 'plain_text',\n          text: '📋 Open ClickUp Task ↗',\n          emoji: true\n        },\n        url: `https://app.clickup.com/t/${matchedTaskId}`\n      }\n    ]\n  }\n];\n\nreturn [{\n  json: {\n    title: discussionTitle,\n    body: discussionBody,\n    taskId: matchedTaskId,\n    slackPayload: {\n      text: `📢 Weekly Saturday Reddit Discussion Reminder: ${discussionTitle.slice(0, 60)}`,\n      blocks: slackBlocks\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-slack-send-saturday",
+      "name": "Slack: Send Saturday Reminder Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        60,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL || \"https://hooks.slack.com/services/REPLACE_WITH_YOUR_SLACK_WEBHOOK\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Resolve Saturday Discussion Content & 1-Click Links').first().json.slackPayload) }}"
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule: Every Saturday (10:00 AM IST - Weekend Golden Window)": {
+      "main": [
+        [
+          {
+            "node": "ClickUp: Fetch Calendar Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ClickUp: Fetch Calendar Tasks": {
+      "main": [
+        [
+          {
+            "node": "Resolve Saturday Discussion Content & 1-Click Links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Saturday Discussion Content & 1-Click Links": {
+      "main": [
+        [
+          {
+            "node": "Slack: Send Saturday Reminder Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "errorWorkflow": "ykngoIBwQiq2aZ8a"
+  }
+}
