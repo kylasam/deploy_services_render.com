@@ -264,7 +264,8 @@
   "active": true,
   "settings": {
     "availableInMCP": true,
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "ykngoIBwQiq2aZ8a"
   },
   "versionId": "f4c08ef9-299e-41ff-9581-72f648e20f2b",
   "id": "ZeKEDXDK44B5yoQr",

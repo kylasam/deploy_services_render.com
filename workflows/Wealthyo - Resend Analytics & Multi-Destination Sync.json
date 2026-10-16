@@ -86,7 +86,8 @@
   "settings": {
     "availableInMCP": true,
     "binaryMode": "separate",
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "ykngoIBwQiq2aZ8a"
   },
   "versionId": "d36ec144-a3e5-40dc-8453-4c6b2e419c96",
   "id": "n51nE1cH2NDIw4We",

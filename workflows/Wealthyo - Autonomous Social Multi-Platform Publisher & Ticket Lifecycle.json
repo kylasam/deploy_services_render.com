@@ -226,7 +226,6 @@
     {
       "id": "5b56548e-0dac-49c6-9e24-92695e5d22f3",
       "name": "Facebook: Publish Video Reel",
-      "onError": "continueRegularOutput",
       "parameters": {
         "bodyParameters": {
           "parameters": [
@@ -263,7 +262,6 @@
     {
       "id": "54d45444-7c22-4442-95df-345adc8d9d6f",
       "name": "Instagram: Init Reel Container",
-      "onError": "continueRegularOutput",
       "parameters": {
         "bodyParameters": {
           "parameters": [
@@ -300,7 +298,6 @@
     {
       "id": "0fe53160-9cc1-4e1a-846a-97bb9abefc6c",
       "name": "Wait for Meta Video Transcoding (45s)",
-      "onError": "continueRegularOutput",
       "parameters": {
         "amount": 45
       },
@@ -315,7 +312,6 @@
     {
       "id": "28e5029d-26f4-4632-bddf-1948e738dd72",
       "name": "Instagram: Publish Reel Live",
-      "onError": "continueRegularOutput",
       "parameters": {
         "bodyParameters": {
           "parameters": [
@@ -344,7 +340,6 @@
     {
       "id": "c4fecafa-0853-47c7-bf13-894a1714434f",
       "name": "Dev.to: Publish Canonical Blog Article",
-      "onError": "continueRegularOutput",
       "parameters": {
         "headerParameters": {
           "parameters": [
@@ -457,7 +452,6 @@
     {
       "id": "8c2669fe-f133-4824-8567-f4f1412ce22c",
       "name": "Slack: Send Release Alert with Links",
-      "onError": "continueRegularOutput",
       "parameters": {
         "headerParameters": {
           "parameters": [
@@ -700,7 +694,8 @@
     "callerPolicy": "workflowsFromSameOwner",
     "executionOrder": "v1",
     "timeSavedMode": "fixed",
-    "timezone": "Asia/Kolkata"
+    "timezone": "Asia/Kolkata",
+    "errorWorkflow": "ykngoIBwQiq2aZ8a"
   },
   "versionId": "34243b1a-4579-492e-a759-00e69fcbc32f",
   "id": "qaQgyUFzF4mWhibr",
