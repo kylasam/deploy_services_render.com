@@ -42,7 +42,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ $env.CLICKUP_API_TOKEN }}"
+              "value": "pk_308598557_9CP65EANIWJ0XHF9NUOFGMFUDCAMPPM5"
             },
             {
               "name": "Content-Type",
@@ -55,7 +55,8 @@
         "options": {},
         "sendBody": true,
         "specifyHeaders": "keypair",
-        "url": "https://api.clickup.com/api/v2/view/2kxv3uye-1492/comment"
+        "url": "https://api.clickup.com/api/v2/view/2kxv3uye-1492/comment",
+        "sendHeaders": true
       },
       "position": [
         -680,
