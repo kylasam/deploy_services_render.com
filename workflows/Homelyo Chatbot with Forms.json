@@ -4,57 +4,63 @@
     {
       "id": "00f758e7-bfae-490d-badc-94ce7f66602c",
       "name": "Webhook",
+      "webhookId": "56184ad6-acda-49ad-ac8b-c9b3f770ebe5",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        944,
+        32
+      ],
       "parameters": {
         "httpMethod": "POST",
         "options": {},
         "path": "homely-chat",
         "responseMode": "responseNode"
-      },
-      "position": [
-        944,
-        32
-      ],
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "webhookId": "56184ad6-acda-49ad-ac8b-c9b3f770ebe5"
+      }
     },
     {
-      "credentials": {
-        "googleApi": {
-          "id": "PWFRJ8GkzPw115xh",
-          "name": "Google Service Account account"
-        }
-      },
       "id": "4cf5334b-073a-4789-b044-7563af35820b",
       "name": "Get Knowledge Base",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        32
+      ],
       "parameters": {
         "authentication": "serviceAccount",
         "documentURL": "https://docs.google.com/document/d/1wbZ_7vC2ikRC42c7AsKJuNdzgbHOSYCfel7NQmOKqhs/edit?usp=sharing",
         "operation": "get"
       },
-      "position": [
-        1168,
-        32
-      ],
-      "type": "n8n-nodes-base.googleDocs",
-      "typeVersion": 2
+      "credentials": {
+        "googleApi": {
+          "id": "PWFRJ8GkzPw115xh",
+          "name": "Google Service Account account"
+        }
+      }
     },
     {
       "id": "16cdb735-d2dc-4c14-979e-fd6e25fdadee",
       "name": "Process Content",
-      "parameters": {
-        "jsCode": "const items = $input.all();\nlet text = '';\n\nfor (const item of items) {\n  if (item.json.content) {\n    text += item.json.content + '\\n';\n  }\n}\n\nconst userMessage = $node[\"Webhook\"].json.body.message || '';\nconst customerData = $node[\"Webhook\"].json.body.customer_data || null;\n\nreturn [{\n  json: {\n    knowledge_base: text,\n    user_message: userMessage,\n    customer_data: customerData\n  }\n}];"
-      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         1376,
         32
       ],
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet text = '';\n\nfor (const item of items) {\n  if (item.json.content) {\n    text += item.json.content + '\\n';\n  }\n}\n\nconst userMessage = $node[\"Webhook\"].json.body.message || '';\nconst customerData = $node[\"Webhook\"].json.body.customer_data || null;\n\nreturn [{\n  json: {\n    knowledge_base: text,\n    user_message: userMessage,\n    customer_data: customerData\n  }\n}];"
+      }
     },
     {
       "id": "fd49fa71-6e4b-4061-bbed-369827c02c7a",
-      "name": "Set Prompt",
+      "name": "System Instructions",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1600,
+        32
+      ],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -62,7 +68,7 @@
               "id": "system-prompt",
               "name": "system_prompt",
               "type": "string",
-              "value": "=You are Sara, a friendly and helpful property consultant at Homelyo in Berlin-Lichtenrade. You're chatting with potential tenants in a warm, personal way - like a helpful friend who happens to work in real estate.\n\nYOUR PERSONALITY:\n- Warm, approachable, and genuinely interested in helping\n- Professional but conversational (not robotic)\n- Use natural language like you're texting a friend\n- Show enthusiasm about the property\n- Be empathetic to tenant needs\n\nYOUR ROLE:\nYou help people find their perfect room at Homelyo on Lichtenrader Damm, 12305 Berlin. You know everything about the property and love helping people settle into their new home.\n\nKNOWLEDGE BASE:\n{{ $json.knowledge_base }}\n\nHOW TO RESPOND:\n\nFor GREETINGS (hello, hi, hey, good morning, etc.):\nRespond warmly and personally, like:\n- \"Hey there! 👋 I'm Sara from Homelyo. I'd love to help you find your perfect room in Berlin-Lichtenrade. What brings you here today?\"\n- \"Hi! 😊 Sara here from Homelyo. Looking for a place to stay in Berlin? I'm here to help!\"\n- \"Hello! 🏠 I'm Sara, your go-to person for everything Homelyo. How can I make your room search easier today?\"\n\nFor GENERAL QUESTIONS:\n- Answer from the knowledge base\n- Be conversational and friendly\n- Add personal touches like \"I think you'll love...\" or \"One thing tenants really appreciate is...\"\n- Keep it brief (2-4 sentences)\n\nFor BOOKING REQUESTS:\nIf the user says anything like:\n- \"I want to book\"\n- \"I'd like to reserve\"\n- \"I'm interested in renting\"\n- \"How do I apply\"\n- \"I want to rent\"\n- \"I want this room\"\n- Any similar booking/reservation intent\n\nThen respond EXACTLY with:\n\"Perfect! 🏠 Let me pull up our booking form for you. Just fill it in with your details and I'll make sure our team gets back to you within 24 hours. One moment...\"\n\nSTRICT RULES YOU MUST MENTION:\n- NO PETS 🐕❌\n- NO SMOKING 🚭\n- NO DRUGS\n\nTIPS FOR GOOD RESPONSES:\n✓ Use \"I\" and \"you\" (personal)\n✓ Show enthusiasm with emojis (but don't overdo it)\n✓ Mention specific benefits: \"KE2 has a lovely balcony 🌿\"\n✓ If you don't know something: \"That's a great question! I don't have that exact info right now, but I can have our team reach out to you with all the details. Want me to set that up?\"\n✓ Keep it natural - like texting a helpful friend\n\nEXAMPLES:\n\nUser: \"Tell me about KE2\"\nSara: \"Oh, KE2 is one of my favorites! 😊 It comes with a private balcony which is perfect for morning coffee or unwinding after work. Fully furnished, modern, and ready to move in. The U6 station is super close too - just a quick walk! What else would you like to know about it?\"\n\nUser: \"Is parking available?\"\nSara: \"Hmm, I don't have the parking details on hand right now. But that's definitely something I can find out for you! Would you like me to have our team contact you with all the specifics? 📧\"\n\nUser: \"What are your rules?\"\nSara: \"Great question! We keep things simple and respectful here. The main rules are: absolutely NO PETS 🐕❌, NO SMOKING 🚭, and NO DRUGS. We want everyone to enjoy a clean, peaceful living environment. Everything else is pretty standard co-living stuff! 😊\"\n\nRemember: You're Sara - friendly, helpful, real. Not a robot. Chat naturally! 💬"
+              "value": "=You are Sara, a friendly and helpful property consultant at Homelyo in Berlin-Lichtenrade. You're chatting with potential tenants in a warm, personal way - like a helpful friend who happens to work in real estate.\n\nYOUR PERSONALITY:\n- Warm, approachable, and genuinely interested in helping\n- Professional but conversational (not robotic)\n- Use natural language like you're texting a friend\n- Show enthusiasm about the property\n- Be empathetic to tenant needs\n\nYOUR ROLE:\nYou help people find their perfect room at Homelyo on Lichtenrader Damm, 12305 Berlin. You know everything about the property and love helping people settle into their new home.\n\nKNOWLEDGE BASE:\n{{ $json.knowledge_base }}\n\nHOW TO RESPOND:\n\nFor GREETINGS (hello, hi, hey, good morning, etc.):\nRespond warmly and personally, like:\n- \"Hey there! \ud83d\udc4b I'm Sara from Homelyo. I'd love to help you find your perfect room in Berlin-Lichtenrade. What brings you here today?\"\n- \"Hi! \ud83d\ude0a Sara here from Homelyo. Looking for a place to stay in Berlin? I'm here to help!\"\n- \"Hello! \ud83c\udfe0 I'm Sara, your go-to person for everything Homelyo. How can I make your room search easier today?\"\n\nFor GENERAL QUESTIONS:\n- Answer from the knowledge base\n- Be conversational and friendly\n- Add personal touches like \"I think you'll love...\" or \"One thing tenants really appreciate is...\"\n- Keep it brief (2-4 sentences)\n\nFor BOOKING REQUESTS:\nIf the user says anything like:\n- \"I want to book\"\n- \"I'd like to reserve\"\n- \"I'm interested in renting\"\n- \"How do I apply\"\n- \"I want to rent\"\n- \"I want this room\"\n- Any similar booking/reservation intent\n\nThen respond EXACTLY with:\n\"Perfect! \ud83c\udfe0 Let me pull up our booking form for you. Just fill it in with your details and I'll make sure our team gets back to you within 24 hours. One moment...\"\n\nSTRICT RULES YOU MUST MENTION:\n- NO PETS \ud83d\udc15\u274c\n- NO SMOKING \ud83d\udead\n- NO DRUGS\n\nTIPS FOR GOOD RESPONSES:\n\u2713 Use \"I\" and \"you\" (personal)\n\u2713 Show enthusiasm with emojis (but don't overdo it)\n\u2713 Mention specific benefits: \"KE2 has a lovely balcony \ud83c\udf3f\"\n\u2713 If you don't know something: \"That's a great question! I don't have that exact info right now, but I can have our team reach out to you with all the details. Want me to set that up?\"\n\u2713 Keep it natural - like texting a helpful friend\n\nEXAMPLES:\n\nUser: \"Tell me about KE2\"\nSara: \"Oh, KE2 is one of my favorites! \ud83d\ude0a It comes with a private balcony which is perfect for morning coffee or unwinding after work. Fully furnished, modern, and ready to move in. The U6 station is super close too - just a quick walk! What else would you like to know about it?\"\n\nUser: \"Is parking available?\"\nSara: \"Hmm, I don't have the parking details on hand right now. But that's definitely something I can find out for you! Would you like me to have our team contact you with all the specifics? \ud83d\udce7\"\n\nUser: \"What are your rules?\"\nSara: \"Great question! We keep things simple and respectful here. The main rules are: absolutely NO PETS \ud83d\udc15\u274c, NO SMOKING \ud83d\udead, and NO DRUGS. We want everyone to enjoy a clean, peaceful living environment. Everything else is pretty standard co-living stuff! \ud83d\ude0a\"\n\nRemember: You're Sara - friendly, helpful, real. Not a robot. Chat naturally! \ud83d\udcac"
             },
             {
               "id": "user-msg",
@@ -85,25 +91,22 @@
           ]
         },
         "options": {}
-      },
-      "position": [
-        1600,
-        32
-      ],
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4
+      }
     },
     {
-      "credentials": {
-        "groqApi": {
-          "id": "hA1VUxlheb9zJf7G",
-          "name": "Groq account"
-        }
-      },
       "id": "af93516e-d5a6-4549-8e18-05e48d6a5be7",
-      "name": "Groq API",
+      "name": "Gemini Flash API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1824,
+        32
+      ],
       "parameters": {
-        "authentication": "predefinedCredentialType",
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=YOUR_GEMINI_API_KEY",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
             {
@@ -112,57 +115,48 @@
             }
           ]
         },
-        "jsonBody": "={{ {\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": $json.system_prompt\n    },\n    {\n      \"role\": \"user\",\n      \"content\": $json.user_message\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 400\n} }}",
-        "method": "POST",
-        "nodeCredentialType": "groqApi",
-        "options": {},
         "sendBody": true,
-        "sendHeaders": true,
+        "contentType": "json",
         "specifyBody": "json",
-        "url": "https://api.groq.com/openai/v1/chat/completions"
-      },
-      "position": [
-        1824,
-        32
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2
+        "jsonBody": "={{ JSON.stringify({\n  system_instruction: {\n    parts: [{ text: $json.system_prompt }]\n  },\n  contents: [\n    {\n      role: \"user\",\n      parts: [{ text: $json.user_message }]\n    }\n  ],\n  generationConfig: {\n    temperature: 0.7,\n    maxOutputTokens: 400\n  }\n}) }}",
+        "options": {}
+      }
     },
     {
       "id": "cd1bc876-9d8e-46a1-95a0-e12864b13997",
       "name": "Respond (Normal)",
-      "parameters": {
-        "options": {},
-        "respondWith": "json",
-        "responseBody": "={\n  \"reply\": \"{{ $node['Groq API'].json.choices[0].message.content.replace(/\\\"/g, '\\\\\\\"') }}\",\n  \"trigger_form\": {{ $node['Groq API'].json.choices[0].message.content.includes(\"I'll open our booking form\") }},\n  \"buttons\": [\n    {\n      \"label\": \"📧 Contact Homelyo\",\n      \"action\": \"open_url\",\n      \"url\": \"mailto:support@homelyo.eu?subject=Homelyo%20Inquiry&body=Hello%20Homelyo%20Team,%0D%0A%0D%0AI%20am%20interested%20in%20a%20room.%0D%0AHere%20are%20my%20details:%0D%0A-%20Full%20Name:%0D%0A-%20Phone%20Number:%0D%0A-%20Message:%0D%0A%0D%0AThank%20you!\"\n    },\n    {\n      \"label\": \"🌐 Visit Homelyo Website\",\n      \"action\": \"open_url\",\n      \"url\": \"https://www.homelyo.eu\"\n    }\n  ]\n}"
-      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
       "position": [
         2064,
         32
       ],
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  reply: $node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"Thanks for your message! How can I assist you with your room search today?\",\n  trigger_form: ($node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"\").toLowerCase().includes(\"booking form\"),\n  buttons: [\n    {\n      label: \"\ud83d\udce7 Contact Homelyo\",\n      action: \"open_url\",\n      url: \"mailto:support@homelyo.eu?subject=Homelyo%20Inquiry&body=Hello%20Homelyo%20Team,%0D%0A%0D%0AI%20am%20interested%20in%20a%20room.%0D%0AHere%20are%20my%20details:%0D%0A-%20Full%20Name:%0D%0A-%20Phone%20Number:%0D%0A-%20Message:%0D%0A%0D%0AThank%20you!\"\n    },\n    {\n      label: \"\ud83c\udf10 Visit Homelyo Website\",\n      action: \"open_url\",\n      url: \"https://www.homelyo.eu\"\n    }\n  ]\n}) }}"
+      }
     }
   ],
   "connections": {
-    "Get Knowledge Base": {
+    "Webhook": {
       "main": [
         [
           {
-            "index": 0,
-            "node": "Process Content",
-            "type": "main"
+            "node": "Get Knowledge Base",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     },
-    "Groq API": {
+    "Get Knowledge Base": {
       "main": [
         [
           {
-            "index": 0,
-            "node": "Respond (Normal)",
-            "type": "main"
+            "node": "Process Content",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -171,31 +165,31 @@
       "main": [
         [
           {
-            "index": 0,
-            "node": "Set Prompt",
-            "type": "main"
+            "node": "System Instructions",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     },
-    "Set Prompt": {
+    "System Instructions": {
       "main": [
         [
           {
-            "index": 0,
-            "node": "Groq API",
-            "type": "main"
+            "node": "Gemini Flash API",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     },
-    "Webhook": {
+    "Gemini Flash API": {
       "main": [
         [
           {
-            "index": 0,
-            "node": "Get Knowledge Base",
-            "type": "main"
+            "node": "Respond (Normal)",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -203,28 +197,11 @@
   },
   "active": true,
   "settings": {
-    "availableInMCP": true,
-    "callerPolicy": "workflowsFromSameOwner",
     "executionOrder": "v1",
-    "timeSavedMode": "fixed"
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "eff4e0ed-dc9d-4be0-b4c8-89b3dfd1978e",
-  "id": "db8UYqenoWzZV6qf",
-  "meta": {
-    "templateCredsSetupCompleted": true
-  },
-  "tags": [
-    {
-      "createdAt": "2026-01-21T00:35:42.082Z",
-      "id": "h2iaFoC9LL8JVZZ7",
-      "name": "homelyo",
-      "updatedAt": "2026-01-21T00:35:42.082Z"
-    },
-    {
-      "createdAt": "2026-01-21T00:35:47.854Z",
-      "id": "QA8Hj5fy1elk3aD8",
-      "name": "chatbot",
-      "updatedAt": "2026-01-21T00:35:47.854Z"
-    }
-  ]
+  "versionId": "5e8fd5c6-a921-4bd5-b7c0-0dc6b544766f",
+  "id": "db8UYqenoWzZV6qf"
 }
