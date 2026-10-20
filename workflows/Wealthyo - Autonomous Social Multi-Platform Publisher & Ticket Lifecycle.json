@@ -235,7 +235,8 @@
         208
       ],
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1
+      "typeVersion": 4.1,
+      "onError": "continueRegularOutput"
     },
     {
       "id": "node-facebook-publish-reel",
@@ -417,7 +418,8 @@
         208
       ],
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1
+      "typeVersion": 4.1,
+      "onError": "continueRegularOutput"
     },
     {
       "executeOnce": true,
@@ -448,7 +450,8 @@
         208
       ],
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1
+      "typeVersion": 4.1,
+      "onError": "continueRegularOutput"
     },
     {
       "id": "node-merge-all-platforms",
