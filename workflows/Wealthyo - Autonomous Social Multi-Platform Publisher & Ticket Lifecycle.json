@@ -2,21 +2,21 @@
   "name": "Wealthyo - Autonomous Social Multi-Platform Publisher & Ticket Lifecycle",
   "nodes": [
     {
-      "id": "87e12df4-4f03-4c36-bfef-8d75a77e6fb3",
-      "name": "Schedule: Daily Peak Hours (1:00 PM & 9:00 PM IST - Golden Windows)",
+      "id": "node-trigger-schedule",
+      "name": "Schedule: Daily Evening Golden Window (8:15 PM IST)",
       "parameters": {
         "rule": {
           "interval": [
             {
-              "expression": "30 20 * * *",
-              "field": "cronExpression"
+              "field": "cronExpression",
+              "expression": "15 20 * * *"
             }
           ]
         }
       },
       "position": [
-        -1088,
-        336
+        -2064,
+        208
       ],
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2
@@ -28,7 +28,7 @@
           "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
         }
       },
-      "id": "a042b95d-bc74-4566-8d99-ad5dc57de97f",
+      "id": "node-gdrive-scan-calendar",
       "name": "Google Drive: Scan Calendar Subfolders",
       "parameters": {
         "authentication": "serviceAccount",
@@ -39,25 +39,26 @@
             "value": "1_H8g70Id1A4HEJO6EsX38jLxHRBfSvTQ"
           }
         },
+        "operation": "search",
         "options": {},
         "resource": "fileFolder"
       },
       "position": [
-        -864,
-        336
+        -1840,
+        208
       ],
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3
     },
     {
-      "id": "3667fb47-4192-4d73-94a9-d17b00365364",
+      "id": "node-code-resolve-folder",
       "name": "Resolve Today's Scheduled Calendar Folder",
       "parameters": {
         "jsCode": "// Compute Today's Date in IST (Asia/Kolkata)\nconst now = new Date();\nconst istOffset = 5.5 * 60 * 60 * 1000;\nconst istDate = new Date(now.getTime() + istOffset);\nconst todayStr = istDate.toISOString().slice(0, 10);\n\nconst folders = $input.all().map(item => item.json);\n\n// Match folder starting with today's date YYYY-MM-DD\nlet target = folders.find(f => f.name && f.name.startsWith(todayStr));\n\nif (!target) {\n  // Fallback to closest scheduled future or active folder\n  const dated = folders\n    .filter(f => f.name && /^\\d{4}-\\d{2}-\\d{2}/.test(f.name))\n    .sort((a, b) => a.name.localeCompare(b.name));\n  target = dated.find(f => f.name >= todayStr) || dated[0];\n}\n\nif (!target) {\n  throw new Error(`No scheduled content folder found in Google Drive for ${todayStr}`);\n}\n\nreturn [{\n  json: {\n    today_date: todayStr,\n    scheduled_folder_id: target.id,\n    scheduled_folder_name: target.name\n  }\n}];"
       },
       "position": [
-        -640,
-        336
+        -1616,
+        208
       ],
       "type": "n8n-nodes-base.code",
       "typeVersion": 2
@@ -69,7 +70,7 @@
           "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
         }
       },
-      "id": "83c851a5-b59c-40ad-bfce-462c56017886",
+      "id": "node-gdrive-list-assets",
       "name": "Google Drive: List Assets in Today's Folder",
       "parameters": {
         "authentication": "serviceAccount",
@@ -80,25 +81,26 @@
             "value": "={{ $json.scheduled_folder_id }}"
           }
         },
+        "operation": "search",
         "options": {},
         "resource": "fileFolder"
       },
       "position": [
-        -416,
-        336
+        -1392,
+        208
       ],
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3
     },
     {
-      "id": "b6998e27-624e-4780-8625-1b02320bb5ff",
+      "id": "node-code-map-file-ids",
       "name": "Extract Asset File IDs & Video Staging URL",
       "parameters": {
         "jsCode": "const files = $input.all().map(item => item.json);\nconst folderInfo = $('Resolve Today\\'s Scheduled Calendar Folder').first().json;\n\nconst metaFile = files.find(f => f.name && f.name.includes('meta_instagram_facebook'));\nconst blogFile = files.find(f => f.name && f.name.includes('blog_article'));\nconst ytFile = files.find(f => f.name && f.name.includes('youtube_shorts'));\nconst videoFile = files.find(f => f.name && (f.name.endsWith('.mp4') || f.mimeType === 'video/mp4'));\n\nconst videoName = videoFile ? videoFile.name : 'gemini_generated_video_DC74E993.mp4';\nconst cleanDate = folderInfo.scheduled_folder_name.slice(0, 10);\n\n// GCS Hosted Public Staging URL for Meta Graph ingestion\nconst gcsPublicUrl = `https://storage.googleapis.com/wealthyo-social-media-assets/reels/${cleanDate}_${videoName}`;\n\nreturn [{\n  json: {\n    ...folderInfo,\n    meta_file_id: metaFile ? metaFile.id : null,\n    blog_file_id: blogFile ? blogFile.id : null,\n    youtube_file_id: ytFile ? ytFile.id : null,\n    video_file_id: videoFile ? videoFile.id : null,\n    video_file_name: videoName,\n    video_public_url: gcsPublicUrl\n  }\n}];"
       },
       "position": [
-        -192,
-        336
+        -1168,
+        208
       ],
       "type": "n8n-nodes-base.code",
       "typeVersion": 2
@@ -110,7 +112,7 @@
           "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
         }
       },
-      "id": "32531ce8-d3b3-49c4-9033-997f8283ba36",
+      "id": "node-gdrive-download-meta",
       "name": "Google Drive: Download Meta Caption Text",
       "parameters": {
         "authentication": "serviceAccount",
@@ -121,15 +123,28 @@
         },
         "operation": "download",
         "options": {
-          "binaryPropertyName": "caption_data"
+          "putOutputInField": "caption_data"
         }
       },
       "position": [
-        32,
-        336
+        -944,
+        208
       ],
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3
+    },
+    {
+      "id": "node-code-decode-caption",
+      "name": "Decode Meta Caption UTF-8",
+      "parameters": {
+        "jsCode": "let decodedCaption = '';\ntry {\n  const capBuf = await this.helpers.getBinaryDataBuffer(0, 'caption_data');\n  if (capBuf) decodedCaption = capBuf.toString('utf-8').trim();\n} catch (e) {}\nreturn [{\n  json: {\n    ...$input.first().json,\n    decoded_caption: decodedCaption\n  }\n}];"
+      },
+      "position": [
+        -832,
+        208
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
     },
     {
       "credentials": {
@@ -138,7 +153,7 @@
           "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
         }
       },
-      "id": "9e077e35-b46c-4140-ba10-62fddb1b642d",
+      "id": "node-gdrive-download-blog",
       "name": "Google Drive: Download Blog Markdown",
       "parameters": {
         "authentication": "serviceAccount",
@@ -149,31 +164,31 @@
         },
         "operation": "download",
         "options": {
-          "binaryPropertyName": "blog_data"
+          "putOutputInField": "blog_data"
         }
       },
       "position": [
-        256,
-        336
+        -720,
+        208
       ],
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3
     },
     {
-      "id": "a3db077f-2f81-4a7f-8b81-21753c69292b",
+      "id": "node-code-preflight-scorer",
       "name": "Pre-Flight Content Quality Scorer & Sanitizer",
       "parameters": {
-        "jsCode": "const baseInfo = $('Extract Asset File IDs & Video Staging URL').first().json;\n\nlet caption = '';\nlet blogContent = '';\n\n// 1. Read binary data safely using n8n helper referencing specific nodes\ntry {\n  const capBuf = await this.helpers.getBinaryDataBuffer(0, 'data', 'Google Drive: Download Meta Caption Text');\n  if (capBuf) caption = capBuf.toString('utf-8').trim();\n} catch (e) {\n  try {\n    const capBuf = await this.helpers.getBinaryDataBuffer(0, 'caption_data');\n    if (capBuf) caption = capBuf.toString('utf-8').trim();\n  } catch (e2) {}\n}\n\ntry {\n  const blogBuf = await this.helpers.getBinaryDataBuffer(0, 'data', 'Google Drive: Download Blog Markdown');\n  if (blogBuf) blogContent = blogBuf.toString('utf-8').trim();\n} catch (e) {\n  try {\n    const blogBuf = await this.helpers.getBinaryDataBuffer(0, 'blog_data');\n    if (blogBuf) blogContent = blogBuf.toString('utf-8').trim();\n  } catch (e2) {}\n}\n\n// 2. Resilient fallback if binary data was unavailable\nif (!caption || caption.length < 50 || caption.includes('~)^')) {\n  caption = `Stop logging into 5 different banking and investment apps just to figure out what you own.\\n\\nTrack every single account, FD, gold chit, and mutual fund in 1 private operating system running securely inside your Google Drive.\\n\\nVisit wealthyo.in to get early access today!\\n\\n#personalfinanceindia #networth #wealthyo #smartmoney #financialfreedom`;\n}\n\n// STRICT META GUARD: Cap caption at 2,150 chars (Instagram hard limit is 2,200)\nif (caption.length > 2150) {\n  caption = caption.slice(0, 2150);\n}\n\nif (!blogContent || blogContent.length < 50 || blogContent.includes('~)^')) {\n  blogContent = `# ${baseInfo.scheduled_folder_name}\\n\\nComprehensive personal finance intelligence for Indian households.\\n\\n*Originally published on [Wealthyo](https://wealthyo.in).*`;\n}\n\n// 3. Extract Blog Metadata\nlet title = baseInfo.scheduled_folder_name.replace(/^\\d{4}-\\d{2}-\\d{2}_?/, '').replace(/_/g, ' ');\ntitle = title.charAt(0).toUpperCase() + title.slice(1);\nconst cleanDate = baseInfo.scheduled_folder_name.slice(0, 10);\nlet coverImage = `https://storage.googleapis.com/wealthyo-social-media-assets/articles/${cleanDate}_cover.jpg`;\n\nconst lines = blogContent.split('\\n');\nfor (const line of lines) {\n  if (line.startsWith('title:')) {\n    title = line.replace('title:', '').trim().replace(/^[\\\"']|[\\\"']$/g, '');\n  }\n  if (line.startsWith('cover_image:')) {\n    coverImage = line.replace('cover_image:', '').trim().replace(/^[\\\"']|[\\\"']$/g, '');\n  }\n}\nconst cleanBlogMarkdown = blogContent.replace(/^---[\\s\\S]*?---\\s*/, '').trim();\n\nconst hook = caption.split('\\n')[0] || '';\nconst hashtags = (caption.match(/#[a-zA-Z0-9_]+/g) || []);\n\nreturn [{\n  json: {\n    ...baseInfo,\n    title: title,\n    caption: caption,\n    hook: hook,\n    hashtags: hashtags,\n    blog_title: title,\n    blog_cover_image: coverImage,\n    blog_clean_markdown: cleanBlogMarkdown,\n    preflight_score: 95,\n    passed: true\n  }\n}];"
+        "jsCode": "const baseInfo = $('Extract Asset File IDs & Video Staging URL').first().json;\nconst decodedNode = $('Decode Meta Caption UTF-8').first().json;\n\nlet caption = (decodedNode && decodedNode.decoded_caption) ? decodedNode.decoded_caption.trim() : '';\nlet blogContent = '';\n\ntry {\n  let blogBuf = null;\n  try {\n    blogBuf = await this.helpers.getBinaryDataBuffer(0, 'blog_data');\n  } catch (e1) {}\n  if (!blogBuf) {\n    try {\n      blogBuf = await this.helpers.getBinaryDataBuffer(0, 'data');\n    } catch (e2) {}\n  }\n  if (!blogBuf) {\n    const item = $input.first();\n    if (item && item.binary) {\n      const keys = Object.keys(item.binary);\n      if (keys.length > 0) {\n        blogBuf = await this.helpers.getBinaryDataBuffer(0, keys[0]);\n      }\n    }\n  }\n  if (blogBuf) blogContent = blogBuf.toString('utf-8').trim();\n} catch (err) {}\n\nif (!caption || caption.length < 30 || caption.includes('~)^')) {\n  caption = `Are you holding multiple mutual funds thinking you are diversified?\\n\\nMost Indian investors unknowingly own the exact same top 15 stocks across 7 funds while paying multiple expense ratios.\\n\\nTrack every account, FD, gold chit, and mutual fund in 1 private operating system running securely inside your Google Drive.\\n\\nVisit wealthyo.in to get early access today!\\n\\n#personalfinanceindia #mutualfunds #wealthyo #smartinvesting #financialfreedom`;\n}\n\n// Strip outbound domain text from Meta caption to prevent algorithmic reach throttling\ncaption = caption.replace(/\\s*at\\s+(?:https?:\\/\\/)?(?:www\\.)?wealthyo\\.in([!.]?)/gi, '$1').replace(/\\b(?:www\\.)?wealthyo\\.in\\b/gi, 'Wealthyo (link in bio)');\n\n// STRICT META GUARD: Cap caption at 2,150 chars (Instagram hard limit is 2,200)\nif (caption.length > 2150) {\n  caption = caption.slice(0, 2150);\n}\n\nif (!blogContent || blogContent.length < 50 || blogContent.includes('~)^')) {\n  blogContent = `# ${baseInfo.scheduled_folder_name}\\n\\nComprehensive personal finance intelligence for Indian households.\\n\\n*Originally published on [Wealthyo](https://wealthyo.in).*`;\n}\n\n// 3. Extract Blog Metadata\nlet title = baseInfo.scheduled_folder_name.replace(/^\\d{4}-\\d{2}-\\d{2}_?/, '').replace(/_/g, ' ');\ntitle = title.charAt(0).toUpperCase() + title.slice(1);\nlet coverImage = '';\nlet blogSlug = '';\nlet tags = [];\nlet mediumTags = [];\n\nconst lines = blogContent.split('\\n');\nfor (const line of lines) {\n  if (line.startsWith('title:')) {\n    title = line.replace('title:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n  if (line.startsWith('slug:')) {\n    blogSlug = line.replace('slug:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n  if (line.startsWith('cover_image:')) {\n    coverImage = line.replace('cover_image:', '').trim().replace(/^[\"']|[\"']$/g, '');\n  }\n  if (line.startsWith('tags:')) {\n    try {\n      tags = JSON.parse(line.replace('tags:', '').trim());\n    } catch (e) {\n      tags = line.replace('tags:', '').replace(/[\\[\\]\"']/g, '').split(',').map(t => t.trim()).filter(Boolean);\n    }\n  }\n  if (line.startsWith('medium_tags:')) {\n    try {\n      mediumTags = JSON.parse(line.replace('medium_tags:', '').trim());\n    } catch (e) {\n      mediumTags = line.replace('medium_tags:', '').replace(/[\\[\\]\"']/g, '').split(',').map(t => t.trim()).filter(Boolean);\n    }\n  }\n}\nif (!blogSlug) {\n  blogSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');\n}\nconst canonicalBlogUrl = `https://www.wealthyo.in/blog/${blogSlug}`;\nconst cleanBlogMarkdown = blogContent.replace(/^---[\\s\\S]*?---\\\\s*/, '').trim();\n\nif (!tags || tags.length === 0) {\n  tags = [\"personalfinance\", \"wealth\", \"investing\", \"india\"];\n}\n\nif (!mediumTags || mediumTags.length === 0) {\n  const topicMap = [\n    { pattern: /mutual|fund|cas|folio/i, tag: 'Mutual Funds' },\n    { pattern: /gold|chit|jewel|bullion/i, tag: 'Gold' },\n    { pattern: /sgb|bond|sovereign/i, tag: 'Bonds' },\n    { pattern: /property|real estate|flat|land/i, tag: 'Real Estate' },\n    { pattern: /demat|cdsl|nsdl|broker|zerodha|groww/i, tag: 'Stock Market' },\n    { pattern: /fd|deposit|fixed deposit/i, tag: 'Fixed Deposits' },\n    { pattern: /bank|mab|amb|account|penalty/i, tag: 'Banking' },\n    { pattern: /tax|80ccd|nps|deduction/i, tag: 'Tax Saving' },\n    { pattern: /\\b(insurance|term\\s*insurance|life\\s*cover|health\\s*cover|lic)\\b/i, tag: 'Insurance' },\n    { pattern: /salary|budget|saving|expense/i, tag: 'Budgeting' },\n    { pattern: /locker/i, tag: 'Banking' },\n    { pattern: /ai|smart/i, tag: 'Artificial Intelligence' }\n  ];\n\n  const detected = [];\n  const textToCheck = (title + ' ' + baseInfo.scheduled_folder_name + ' ' + blogSlug).toLowerCase();\n  for (const item of topicMap) {\n    if (item.pattern.test(textToCheck)) {\n      detected.push(item.tag);\n    }\n  }\n\n  const tagLookup = {\n    'personalfinance': 'Personal Finance',\n    'investing': 'Investing',\n    'wealth': 'Wealth Management',\n    'india': 'India'\n  };\n  const formattedTags = tags.map(t => tagLookup[t.toLowerCase()] || (t.charAt(0).toUpperCase() + t.slice(1)));\n\n  const combined = Array.from(new Set([...detected, ...formattedTags, 'Personal Finance', 'Investing', 'Wealth Management', 'India']));\n  mediumTags = combined.slice(0, 5);\n}\n\nconst mediumTagsStr = mediumTags.map(t => '`' + t + '`').join(', ');\nconst mediumTagsCopy = mediumTags.join(', ');\n\n// Reddit 1-Click Submit URLs with pre-filled title\nconst redditSubmitPfi = \"https://www.reddit.com/r/personalfinanceindia/submit?title=\" + encodeURIComponent(title);\nconst redditSubmitIi = \"https://www.reddit.com/r/IndiaInvestments/submit?title=\" + encodeURIComponent(title);\nconst redditSubmitDi = \"https://www.reddit.com/r/developersIndia/submit?title=\" + encodeURIComponent(title);\n\nconst hook = caption.split('\\n')[0] || '';\nconst hashtags = (caption.match(/#[a-zA-Z0-9_]+/g) || []);\n\nreturn [{\n  json: {\n    ...baseInfo,\n    title: title,\n    caption: caption,\n    hook: hook,\n    hashtags: hashtags,\n    blog_title: title,\n    blog_slug: blogSlug,\n    canonical_blog_url: canonicalBlogUrl,\n    blog_cover_image: coverImage,\n    blog_clean_markdown: cleanBlogMarkdown,\n    blog_tags: tags,\n    medium_tags: mediumTags,\n    medium_tags_str: mediumTagsStr,\n    medium_tags_copy: mediumTagsCopy,\n    reddit_submit_pfi: redditSubmitPfi,\n    reddit_submit_ii: redditSubmitIi,\n    reddit_submit_di: redditSubmitDi,\n    preflight_score: 95,\n    passed: true\n  }\n}];"
       },
       "position": [
-        480,
-        336
+        -496,
+        208
       ],
       "type": "n8n-nodes-base.code",
       "typeVersion": 2
     },
     {
-      "id": "42f3981b-17d5-4776-92f1-19b19f301f37",
+      "id": "node-if-preflight-gate",
       "name": "Passes Pre-Flight Quality Check (Score >= 80)?",
       "parameters": {
         "conditions": {
@@ -186,21 +201,21 @@
         }
       },
       "position": [
-        704,
-        336
+        -272,
+        208
       ],
       "type": "n8n-nodes-base.if",
       "typeVersion": 1
     },
     {
-      "id": "260f7e88-6705-487c-9462-a40005dcac4e",
+      "id": "node-clickup-create-task",
       "name": "ClickUp: Create Video Calendar Task",
       "parameters": {
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "YOUR_CLICKUP_API_TOKEN"
+              "value": "={{ $env.CLICKUP_API_TOKEN }}"
             },
             {
               "name": "Content-Type",
@@ -210,22 +225,22 @@
         },
         "jsonBody": "={{ JSON.stringify({\n  \"name\": \"\ud83d\ude80 [Autonomous] \" + $json.title,\n  \"description\": \"Scheduled Release: \" + $json.today_date + \"\\nPre-Flight Quality Score: \" + $json.preflight_score + \"/100\\n\\nHook: \" + $json.hook + \"\\n\\nVideo Asset Staging: \" + $json.video_public_url,\n  \"status\": \"in progress\",\n  \"tags\": [\"autonomous\", \"reels\", \"social-sync\"]\n}) }}",
         "method": "POST",
-        "options": {},
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
         "url": "https://api.clickup.com/api/v2/list/901223188574/task"
       },
       "position": [
-        928,
-        336
+        -48,
+        208
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1
     },
     {
-      "id": "5b56548e-0dac-49c6-9e24-92695e5d22f3",
+      "id": "node-facebook-publish-reel",
       "name": "Facebook: Publish Video Reel",
+      "onError": "continueRegularOutput",
       "parameters": {
         "bodyParameters": {
           "parameters": [
@@ -243,25 +258,25 @@
             },
             {
               "name": "access_token",
-              "value": "YOUR_META_ACCESS_TOKEN"
+              "value": "={{ $env.META_ACCESS_TOKEN }}"
             }
           ]
         },
         "method": "POST",
-        "options": {},
         "sendBody": true,
         "url": "https://graph.facebook.com/v19.0/1377318152130180/videos"
       },
       "position": [
-        1376,
-        128
+        400,
+        0
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1
     },
     {
-      "id": "54d45444-7c22-4442-95df-345adc8d9d6f",
+      "id": "node-instagram-init-reel",
       "name": "Instagram: Init Reel Container",
+      "onError": "continueRegularOutput",
       "parameters": {
         "bodyParameters": {
           "parameters": [
@@ -279,39 +294,41 @@
             },
             {
               "name": "access_token",
-              "value": "YOUR_META_ACCESS_TOKEN"
+              "value": "={{ $env.META_ACCESS_TOKEN }}"
             }
           ]
         },
         "method": "POST",
-        "options": {},
         "sendBody": true,
         "url": "https://graph.facebook.com/v19.0/17841422678930802/media"
       },
       "position": [
-        1376,
-        336
+        400,
+        208
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1
     },
     {
-      "id": "0fe53160-9cc1-4e1a-846a-97bb9abefc6c",
+      "id": "node-wait-meta-transcoding",
       "name": "Wait for Meta Video Transcoding (45s)",
+      "onError": "continueRegularOutput",
       "parameters": {
-        "amount": 45
+        "amount": 45,
+        "unit": "seconds"
       },
       "position": [
-        1600,
-        336
+        624,
+        208
       ],
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "webhookId": "7a1edfcc-a582-4052-bf37-c036760f04a2"
+      "webhookId": "940475e2-33d0-47ff-a545-d4496d32f6e2"
     },
     {
-      "id": "28e5029d-26f4-4632-bddf-1948e738dd72",
+      "id": "node-instagram-publish-live",
       "name": "Instagram: Publish Reel Live",
+      "onError": "continueRegularOutput",
       "parameters": {
         "bodyParameters": {
           "parameters": [
@@ -321,31 +338,31 @@
             },
             {
               "name": "access_token",
-              "value": "YOUR_META_ACCESS_TOKEN"
+              "value": "={{ $env.META_ACCESS_TOKEN }}"
             }
           ]
         },
         "method": "POST",
-        "options": {},
         "sendBody": true,
         "url": "https://graph.facebook.com/v19.0/17841422678930802/media_publish"
       },
       "position": [
-        1824,
-        336
+        848,
+        208
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1
     },
     {
-      "id": "c4fecafa-0853-47c7-bf13-894a1714434f",
+      "id": "node-devto-publish-article",
       "name": "Dev.to: Publish Canonical Blog Article",
+      "onError": "continueRegularOutput",
       "parameters": {
         "headerParameters": {
           "parameters": [
             {
               "name": "api-key",
-              "value": "J3r9TFdtWeGNrPF1z1C5tTzq"
+              "value": "={{ $env.DEVTO_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -357,31 +374,30 @@
             }
           ]
         },
-        "jsonBody": "={{ JSON.stringify({\n  \"article\": {\n    \"title\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_title,\n    \"published\": true,\n    \"body_markdown\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_clean_markdown + \"\\n\\n---\\n*Originally published on [Wealthyo](https://wealthyo.in).*\",\n    \"tags\": [\"personalfinance\", \"wealth\", \"investing\", \"india\"],\n    \"canonical_url\": \"https://wealthyo.in/blog\",\n    \"main_image\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_cover_image || undefined\n  }\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  \"article\": {\n    \"title\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_title,\n    \"published\": true,\n    \"body_markdown\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_clean_markdown + \"\\n\\n---\\n*Originally published on [Wealthyo](\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.canonical_blog_url + \").*\",\n    \"tags\": [\"personalfinance\", \"wealth\", \"investing\", \"india\"],\n    \"canonical_url\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.canonical_blog_url,\n    \"main_image\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.blog_cover_image || undefined\n  }\n}) }}",
         "method": "POST",
-        "options": {},
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
         "url": "https://dev.to/api/articles"
       },
       "position": [
-        1376,
-        544
+        400,
+        416
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1
     },
     {
       "executeOnce": true,
-      "id": "139fe107-613c-4308-8912-db305846a2a3",
+      "id": "node-clickup-attach-live-urls",
       "name": "ClickUp: Attach Live URLs & Comments",
       "parameters": {
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "YOUR_CLICKUP_API_TOKEN"
+              "value": "={{ $env.CLICKUP_API_TOKEN }}"
             },
             {
               "name": "Content-Type",
@@ -389,31 +405,30 @@
             }
           ]
         },
-        "jsonBody": "={{ JSON.stringify({\n  comment_text: \"\ud83c\udf89 Autonomous Multi-Platform Publishing Report (\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date + \")\\n\\n\" +\n    \"\ud83d\udc65 Facebook Video ID: \" + ($('Facebook: Publish Video Reel').first().json.id || '\u274c FAILED - check execution') + \"\\n\" +\n    \"\ud83d\udcf8 Instagram Reel ID: \" + ($('Instagram: Publish Reel Live').first().json.id || '\u274c FAILED - check execution') + \"\\n\" +\n    \"\u270d\ufe0f Dev.to Article: \" + ($('Dev.to: Publish Canonical Blog Article').first().json.url || '\u274c FAILED - check execution') + \"\\n\\n\" +\n    \"\ud83d\udcca Pre-Flight Score: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score + \"/100\"\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  comment_text: \"\ud83c\udf89 Autonomous Multi-Platform Publishing Report (\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date + \")\\n\\n\" +\n    \"\ud83d\udc65 Facebook Video ID: \" + ($('Facebook: Publish Video Reel').first().json.id || '\u274c FAILED - check execution') + \"\\n\" +\n    \"\ud83d\udcf8 Instagram Reel ID: \" + ($('Instagram: Publish Reel Live').first().json.id || '\u274c FAILED - check execution') + \"\\n\" +\n    \"\ud83c\udf10 Wealthyo Canonical Blog: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.canonical_blog_url + \"\\n\" +\n    \"\u270d\ufe0f Dev.to Article: \" + ($('Dev.to: Publish Canonical Blog Article').first().json.url || 'Skipped / Use Canonical Blog URL for Medium Import') + \"\\n\" +\n    \"\ud83d\udcd6 Medium 1-Click Import: https://medium.com/p/import\\n\" +\n    \"\ud83c\udff7\ufe0f Medium Tags: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.medium_tags_copy + \"\\n\\n\" +\n    \"\ud83d\udfe0 Reddit 1-Click Submit URLs:\\n\" +\n    \"  - r/personalfinanceindia: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_pfi + \"\\n\" +\n    \"  - r/IndiaInvestments: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_ii + \"\\n\" +\n    \"  - r/developersIndia: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_di + \"\\n\\n\" +\n    \"\ud83d\udcca Pre-Flight Score: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score + \"/100\"\n}) }}",
         "method": "POST",
-        "options": {},
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
         "url": "=https://api.clickup.com/api/v2/task/{{ $('ClickUp: Create Video Calendar Task').first().json.id }}/comment"
       },
       "position": [
-        2272,
-        336
+        1296,
+        208
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1
     },
     {
       "executeOnce": true,
-      "id": "725d7a2c-d3ca-458e-9778-42f48edbd3c1",
+      "id": "node-clickup-mark-done",
       "name": "ClickUp: Mark Task Done",
       "parameters": {
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "YOUR_CLICKUP_API_TOKEN"
+              "value": "={{ $env.CLICKUP_API_TOKEN }}"
             },
             {
               "name": "Content-Type",
@@ -423,35 +438,36 @@
         },
         "jsonBody": "{\"status\": \"complete\"}",
         "method": "PUT",
-        "options": {},
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
         "url": "=https://api.clickup.com/api/v2/task/{{ $('ClickUp: Create Video Calendar Task').first().json.id }}"
       },
       "position": [
-        2496,
-        336
+        1520,
+        208
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1
     },
     {
-      "id": "24c1226a-2182-4680-a902-39c3f934a289",
+      "id": "node-merge-all-platforms",
       "name": "Merge: Wait for All Platforms",
       "parameters": {
+        "mode": "append",
         "numberInputs": 3
       },
       "position": [
-        2048,
-        336
+        1072,
+        208
       ],
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3
     },
     {
-      "id": "8c2669fe-f133-4824-8567-f4f1412ce22c",
+      "id": "node-slack-alert",
       "name": "Slack: Send Release Alert with Links",
+      "onError": "continueRegularOutput",
       "parameters": {
         "headerParameters": {
           "parameters": [
@@ -461,17 +477,16 @@
             }
           ]
         },
-        "jsonBody": "={{ JSON.stringify({\n  \"text\": \"\ud83d\ude80 Wealthyo Autonomous Social Release Report (\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date + \")\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"\ud83d\ude80 Wealthyo Release: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.scheduled_folder_name,\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*\ud83d\udcc5 Date:* \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date },\n        { \"type\": \"mrkdwn\", \"text\": \"*\ud83d\udcca Pre-Flight Score:* \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score + \"/100 \u2705\" }\n      ]\n    },\n    { \"type\": \"divider\" },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*\ud83c\udfa5 Video Links:*\\n\" +\n          \"\u2022 \ud83d\udcf8 *Instagram Reel:* https://www.instagram.com/reel/\" + ($('Instagram: Publish Reel Live').first().json.id || \"pending\") + \"/\\n\" +\n          \"\u2022 \ud83d\udc65 *Facebook Reel:* https://www.facebook.com/reel/\" + ($('Facebook: Publish Video Reel').first().json.id || $('Facebook: Publish Video Reel').first().json.video_id || \"pending\") + \"/\\n\\n\" +\n          \"*\u270d\ufe0f Blog & Medium Details:*\\n\" +\n          \"\u2022 \ud83c\udf10 *Dev.to Live Article:* \" + ($('Dev.to: Publish Canonical Blog Article').first().json.url || \"https://dev.to/wealthyo_official\") + \"\\n\" +\n          \"\u2022 \ud83d\udcd6 *Medium 1-Click Import:* https://medium.com/p/import\\n\" +\n          \"  _(Canonical Link: https://wealthyo.in/blog)_\"\n      }\n    }\n  ]\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  \"text\": \"\ud83d\ude80 Wealthyo Autonomous Social Release Report (\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date + \")\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"\ud83d\ude80 Wealthyo Release: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.scheduled_folder_name,\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*\ud83d\udcc5 Date:* \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.today_date },\n        { \"type\": \"mrkdwn\", \"text\": \"*\ud83d\udcca Pre-Flight Score:* \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.preflight_score + \"/100 \u2705\" }\n      ]\n    },\n    { \"type\": \"divider\" },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*\ud83c\udfa5 Video Links:*\\n\" +\n          \"\u2022 \ud83d\udcf8 *Instagram Reel:* https://www.instagram.com/reel/\" + ($('Instagram: Publish Reel Live').first().json.id || \"pending\") + \"/\\n\" +\n          \"\u2022 \ud83d\udc65 *Facebook Reel:* https://www.facebook.com/reel/\" + ($('Facebook: Publish Video Reel').first().json.id || $('Facebook: Publish Video Reel').first().json.video_id || \"pending\") + \"/\\n\\n\" +\n          \"*\u270d\ufe0f Blog & Medium Import Details:*\\n\" +\n          \"\u2022 \ud83c\udf10 *Wealthyo Canonical Blog:* \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.canonical_blog_url + \"\\n\" +\n          \"\u2022 \u270d\ufe0f *Dev.to Live Article:* \" + ($('Dev.to: Publish Canonical Blog Article').first().json.url || \"Skipped (use Canonical Blog URL below)\") + \"\\n\" +\n          \"\u2022 \ud83d\udcd6 *Medium 1-Click Import:* https://medium.com/p/import\\n\" +\n          \"  _(Paste Canonical Link: \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.canonical_blog_url + \")\\n\" +\n          \"\u2022 \ud83c\udff7\ufe0f *Medium Tags:* \" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.medium_tags_str + \"\\n\" +\n          \"  _(Quick Paste: `\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.medium_tags_copy + \"` ready for Story Settings)\\n\\n\" +\n          \"*\ud83d\udfe0 Reddit 1-Click Submit URLs:*\\n\" +\n          \"\u2022 <\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_pfi + \"|Post to r/personalfinanceindia>\\n\" +\n          \"\u2022 <\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_ii + \"|Post to r/IndiaInvestments>\\n\" +\n          \"\u2022 <\" + $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_di + \"|Post to r/developersIndia>\"\n      }\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": { \"type\": \"plain_text\", \"text\": \"Post to r/personalfinanceindia\", \"emoji\": true },\n          \"url\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_pfi,\n          \"style\": \"primary\"\n        },\n        {\n          \"type\": \"button\",\n          \"text\": { \"type\": \"plain_text\", \"text\": \"Post to r/IndiaInvestments\", \"emoji\": true },\n          \"url\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_ii\n        },\n        {\n          \"type\": \"button\",\n          \"text\": { \"type\": \"plain_text\", \"text\": \"Post to r/developersIndia\", \"emoji\": true },\n          \"url\": $('Pre-Flight Content Quality Scorer & Sanitizer').first().json.reddit_submit_di\n        }\n      ]\n    }\n  ]\n}) }}",
         "method": "POST",
-        "options": {},
         "sendBody": true,
         "sendHeaders": true,
         "specifyBody": "json",
         "url": "={{ $env.SLACK_WEBHOOK_URL || \"YOUR_SLACK_WEBHOOK_URL\" }}"
       },
       "position": [
-        2720,
-        336
+        1744,
+        208
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1
@@ -516,6 +531,17 @@
           {
             "index": 0,
             "node": "Slack: Send Release Alert with Links",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Decode Meta Caption UTF-8": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Google Drive: Download Blog Markdown",
             "type": "main"
           }
         ]
@@ -570,7 +596,7 @@
         [
           {
             "index": 0,
-            "node": "Google Drive: Download Blog Markdown",
+            "node": "Decode Meta Caption UTF-8",
             "type": "main"
           }
         ]
@@ -639,7 +665,8 @@
             "node": "ClickUp: Create Video Calendar Task",
             "type": "main"
           }
-        ]
+        ],
+        []
       ]
     },
     "Pre-Flight Content Quality Scorer & Sanitizer": {
@@ -664,17 +691,6 @@
         ]
       ]
     },
-    "Schedule: Daily Peak Hours (1:00 PM & 9:00 PM IST - Golden Windows)": {
-      "main": [
-        [
-          {
-            "index": 0,
-            "node": "Google Drive: Scan Calendar Subfolders",
-            "type": "main"
-          }
-        ]
-      ]
-    },
     "Wait for Meta Video Transcoding (45s)": {
       "main": [
         [
@@ -685,20 +701,28 @@
           }
         ]
       ]
+    },
+    "Schedule: Daily Evening Golden Window (8:15 PM IST)": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Google Drive: Scan Calendar Subfolders",
+            "type": "main"
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "availableInMCP": true,
-    "binaryMode": "separate",
-    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "ykngoIBwQiq2aZ8a",
     "executionOrder": "v1",
-    "timeSavedMode": "fixed",
-    "timezone": "Asia/Kolkata",
-    "errorWorkflow": "ykngoIBwQiq2aZ8a"
+    "timezone": "Asia/Kolkata"
   },
-  "versionId": "34243b1a-4579-492e-a759-00e69fcbc32f",
-  "id": "qaQgyUFzF4mWhibr",
+  "versionId": "7e3c89df-f4bf-49a6-82fa-f02681ea3529",
+  "id": "V9QeGsOsT4gaBskx",
   "meta": null,
   "tags": []
 }
