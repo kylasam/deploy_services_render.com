@@ -134,7 +134,7 @@
       "parameters": {
         "options": {},
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({\n  reply: $node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"Thanks for your message! How can I assist you with your room search today?\",\n  trigger_form: ($node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"\").toLowerCase().includes(\"booking form\"),\n  buttons: [\n    {\n      label: \"\ud83d\udce7 Contact Homelyo\",\n      action: \"open_url\",\n      url: \"mailto:support@homelyo.eu?subject=Homelyo%20Inquiry&body=Hello%20Homelyo%20Team,%0D%0A%0D%0AI%20am%20interested%20in%20a%20room.%0D%0AHere%20are%20my%20details:%0D%0A-%20Full%20Name:%0D%0A-%20Phone%20Number:%0D%0A-%20Message:%0D%0A%0D%0AThank%20you!\"\n    },\n    {\n      label: \"\ud83c\udf10 Visit Homelyo Website\",\n      action: \"open_url\",\n      url: \"https://www.homelyo.eu\"\n    }\n  ]\n}) }}"
+        "responseBody": "={{ JSON.stringify({\n  reply: $node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"Thanks for your message! How can I assist you with your room search today?\",\n  trigger_form: ($node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"\").toLowerCase().includes(\"booking form\") || ($node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"\").toLowerCase().includes(\"booking request\"),\n  buttons: (($node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"\").toLowerCase().includes(\"booking form\") || ($node[\"Gemini Flash API\"].json.candidates?.[0]?.content?.parts?.[0]?.text || \"\").toLowerCase().includes(\"booking request\")) ? [\n    {\n      label: \"\ud83d\udcc5 Submit a booking request\",\n      action: \"open_form\",\n      url: \"https://forms.fillout.com/t/gq1XFEqEWJus\"\n    }\n  ] : []\n}) }}"
       }
     }
   ],
@@ -195,13 +195,10 @@
       ]
     }
   },
-  "active": true,
   "settings": {
     "executionOrder": "v1",
     "availableInMCP": true,
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner"
-  },
-  "versionId": "5e8fd5c6-a921-4bd5-b7c0-0dc6b544766f",
-  "id": "db8UYqenoWzZV6qf"
+  }
 }
