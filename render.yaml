@@ -23,10 +23,20 @@ services:
         value: https://n8n-fggh.onrender.com/
       - key: N8N_PAYLOAD_SIZE_MAX
         value: "16"
+      - key: EXECUTIONS_DATA_SAVE_ON_SUCCESS
+        value: "none"
+      - key: EXECUTIONS_DATA_SAVE_ON_ERROR
+        value: "all"
+      - key: EXECUTIONS_DATA_SAVE_MANUAL
+        value: "false"
+      - key: EXECUTIONS_DATA_SAVE_EXECUTION_PROGRESS
+        value: "false"
       - key: EXECUTIONS_DATA_PRUNE
         value: "true"
       - key: EXECUTIONS_DATA_MAX_AGE
-        value: "168" # Retain logs for 7 days
+        value: "24" # Retain failed logs for 24 hours max
+      - key: EXECUTIONS_DATA_PRUNE_MAX_COUNT
+        value: "500"
       - key: GENERIC_TIMEZONE
         value: Asia/Kolkata
     autoDeploy: true
