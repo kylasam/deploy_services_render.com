@@ -1,0 +1,114 @@
+{
+  "id": "gowUjuYROwNknkvS",
+  "name": "users_onboarding",
+  "description": null,
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-10T21:50:48.183Z",
+  "updatedAt": "2026-07-29T01:47:45.170Z",
+  "isArchived": true,
+  "versionId": "64854554-b821-4848-9eab-a8fb3e70b13c",
+  "versionCounter": 3,
+  "sourceWorkflowId": null,
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        -48
+      ],
+      "id": "6c6e0875-bf44-4784-8781-2805a95ddcd2",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "12hV57J89qI0W0FEW1b9Cb-htVr6ff1OTUwPakwLUmBk",
+          "mode": "id"
+        },
+        "name": "investment_templates",
+        "sameFolder": false,
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "root",
+          "mode": "list",
+          "cachedResultName": "/ (Root folder)",
+          "cachedResultUrl": "https://drive.google.com/drive"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -288,
+        -48
+      ],
+      "id": "f594891b-c2c1-452f-a9af-e975f4d264c4",
+      "name": "Copy file",
+      "credentials": {
+        "googleApi": {
+          "id": "PWFRJ8GkzPw115xh",
+          "name": "Google Service Account account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Copy file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "gowUjuYROwNknkvS",
+      "projectId": "QlQkOverDpzuLogz",
+      "project": {
+        "id": "QlQkOverDpzuLogz",
+        "name": "Kylasam Nallagoundanpalayam Arruchamy <kylashpriya@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "643a52e5-a61e-4c09-a870-3f193f47a8ef",
+        "createdAt": "2025-12-28T20:23:01.936Z",
+        "updatedAt": "2025-12-28T20:26:22.540Z"
+      },
+      "createdAt": "2026-05-10T21:50:48.183Z",
+      "updatedAt": "2026-05-10T21:50:48.183Z"
+    }
+  ],
+  "activeVersion": null
+}

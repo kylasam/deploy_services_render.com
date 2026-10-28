@@ -1,11 +1,18 @@
 {
+  "id": "4QU7KiJKPWBXZ3U5",
   "name": "thangamayil_scrapper",
+  "description": null,
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-06-11T19:30:21.988Z",
+  "updatedAt": "2026-07-12T20:59:27.472Z",
+  "isArchived": true,
+  "versionId": "61cfa715-cb58-479f-94e3-32ddaf58bcaa",
+  "versionCounter": 415,
+  "sourceWorkflowId": null,
+  "triggerCount": 1,
   "nodes": [
     {
-      "id": "47e0eede-2075-4e08-9d7c-78a9fcf8487f",
-      "name": "Schedule Trigger",
-      "notes": "Every hour Run",
-      "notesInFlow": true,
       "parameters": {
         "rule": {
           "interval": [
@@ -15,17 +22,21 @@
           ]
         }
       },
+      "id": "47e0eede-2075-4e08-9d7c-78a9fcf8487f",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
       "position": [
         0,
         0
       ],
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2
+      "notesInFlow": true,
+      "notes": "Every hour Run"
     },
     {
-      "id": "fb6dcdcb-d9c9-4559-b741-696bfb82ae23",
-      "name": "Fetch Thangamayil Page",
       "parameters": {
+        "url": "https://www.thangamayil.com/scheme/index/rateshistory/",
+        "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
@@ -65,90 +76,101 @@
             }
           },
           "timeout": 10000
-        },
-        "sendHeaders": true,
-        "url": "https://www.thangamayil.com/scheme/index/rateshistory/"
+        }
       },
+      "id": "fb6dcdcb-d9c9-4559-b741-696bfb82ae23",
+      "name": "Fetch Thangamayil Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         224,
         0
       ],
       "retryOnFail": true,
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
       "waitBetweenTries": 2000
     },
     {
-      "id": "ca1fe912-85df-4ca7-b9d2-9cae6d581dfd",
-      "name": "Parse Gold Rate HTML",
       "parameters": {
         "jsCode": "const html = $input.first().json.data;\n\nfunction cleanNumber(str) {\n  return parseFloat(\n    String(str || '')\n      .replace(/<[^>]+>/g, '')\n      .replace(/₹|,/g, '')\n      .trim()\n  );\n}\n\nfunction getRate(label) {\n  const re = new RegExp(\n    label + String.raw`[\\s\\S]*?₹\\s*([0-9,]+(?:\\.[0-9]+)?)`,\n    'i'\n  );\n\n  const m = html.match(re);\n  if (!m) throw new Error(`Could not find rate for ${label}`);\n\n  const value = cleanNumber(m[1]);\n  if (isNaN(value)) {\n    throw new Error(`Invalid numeric value for ${label}: ${m[1]}`);\n  }\n\n  return value;\n}\n\nfunction getLastUpdated() {\n  const m = html.match(\n    /Last updated Time\\s*:\\s*<span[^>]*class=[\"'][^\"']*updated-time[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/span>/i\n  );\n\n  if (m) {\n    return m[1].replace(/<[^>]+>/g, '').trim();\n  }\n\n  const fallback = html.match(/Last updated Time\\s*[-:]?\\s*([\\d/]+\\s+\\d{1,2}:\\d{2}\\s+[AP]M)/i);\n  if (fallback) return fallback[1].trim();\n\n  throw new Error('Could not find last updated timestamp');\n}\n\nfunction parseIndianDt(str) {\n  const m = str.match(/(\\d{2})\\/(\\d{2})\\/(\\d{2})\\s+(\\d{1,2}):(\\d{2})\\s+(AM|PM)/i);\n  if (!m) return str;\n\n  let [, dd, mo, yy, hh, mm, ampm] = m;\n  hh = parseInt(hh, 10);\n\n  if (ampm.toUpperCase() === 'PM' && hh !== 12) hh += 12;\n  if (ampm.toUpperCase() === 'AM' && hh === 12) hh = 0;\n\n  return `20${yy}-${mo}-${dd}T${String(hh).padStart(2, '0')}:${mm}:00`;\n}\n\nconst lastUpdatedRaw = getLastUpdated();\n\nconst g_price_22k = getRate('GOLD RATE 22k');\nconst g_price_24k = getRate('GOLD RATE 24k');\nconst g_price_18k = getRate('GOLD RATE 18k');\nconst silver_price = getRate('SILVER RATE');\n\nconst now = new Date();\nconst edw_publn_id = now.toISOString().slice(0, 16).replace('T', ' ');\n\nreturn [\n  {\n    json: {\n      web_last_updated_ts: parseIndianDt(lastUpdatedRaw),\n      g_price_18k_gram: g_price_18k,\n      g_price_22k_gram: g_price_22k,\n      g_price_24k_gram: g_price_24k,\n      silver_price_gram: silver_price,\n      edw_publn_id\n    }\n  }\n];"
       },
+      "id": "ca1fe912-85df-4ca7-b9d2-9cae6d581dfd",
+      "name": "Parse Gold Rate HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         448,
         0
-      ],
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2
+      ]
     },
     {
-      "id": "23c6412e-3572-4a43-8425-7c71c09ea175",
-      "name": "Validate Data",
       "parameters": {
         "jsCode": "// Validate all required fields are present and numeric\nconst d = $input.first().json;\nconst required = ['web_last_updated_ts','g_price_18k_gram','g_price_22k_gram','g_price_24k_gram','silver_price_gram','edw_publn_id'];\n\nfor (const field of required) {\n  if (d[field] === undefined || d[field] === null || d[field] === '') {\n    throw new Error(`Validation failed: missing field \"${field}\"`);\n  }\n}\n\nconst numericFields = ['g_price_18k_gram','g_price_22k_gram','g_price_24k_gram','silver_price_gram'];\nfor (const field of numericFields) {\n  if (isNaN(d[field])) {\n    throw new Error(`Validation failed: \"${field}\" is not a number → value: ${d[field]}`);\n  }\n  if (d[field] <= 0) {\n    throw new Error(`Validation failed: \"${field}\" must be > 0 → value: ${d[field]}`);\n  }\n}\n\nreturn $input.all();\n"
       },
+      "id": "23c6412e-3572-4a43-8425-7c71c09ea175",
+      "name": "Validate Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         672,
         0
-      ],
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2
+      ]
     },
     {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "insert",
+        "projectId": {
+          "__rl": true,
+          "value": "=wealthyo",
+          "mode": "expression"
+        },
+        "datasetId": {
+          "__rl": true,
+          "value": "=public",
+          "mode": "expression"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "gold_rates",
+          "mode": "value"
+        },
+        "options": {}
+      },
+      "id": "14bed5d1-a32d-449e-b1da-09875d846410",
+      "name": "Insert to BigQuery",
+      "type": "n8n-nodes-base.googleBigQuery",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
       "credentials": {
         "googleApi": {
           "id": "bASwMsmwad1HlC6B",
           "name": "wealthyo-sa@wealthyo.iam.gserviceaccount.com"
         }
-      },
-      "id": "14bed5d1-a32d-449e-b1da-09875d846410",
-      "name": "Insert to BigQuery",
-      "parameters": {
-        "authentication": "serviceAccount",
-        "datasetId": {
-          "__rl": true,
-          "mode": "expression",
-          "value": "=public"
-        },
-        "operation": "insert",
-        "options": {},
-        "projectId": {
-          "__rl": true,
-          "mode": "expression",
-          "value": "=wealthyo"
-        },
-        "tableId": {
-          "__rl": true,
-          "mode": "value",
-          "value": "gold_rates"
-        }
-      },
-      "position": [
-        880,
-        0
-      ],
-      "type": "n8n-nodes-base.googleBigQuery",
-      "typeVersion": 2
+      }
     }
   ],
   "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Thangamayil Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Fetch Thangamayil Page": {
       "main": [
         [
           {
-            "index": 0,
             "node": "Parse Gold Rate HTML",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -157,20 +179,9 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Validate Data",
-            "type": "main"
-          }
-        ]
-      ]
-    },
-    "Schedule Trigger": {
-      "main": [
-        [
-          {
-            "index": 0,
-            "node": "Fetch Thangamayil Page",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -179,23 +190,48 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Insert to BigQuery",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     }
   },
-  "active": false,
+  "nodeGroups": [],
   "settings": {
-    "availableInMCP": false,
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": false
   },
-  "versionId": "61cfa715-cb58-479f-94e3-32ddaf58bcaa",
-  "id": "4QU7KiJKPWBXZ3U5",
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true
   },
-  "tags": []
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "4QU7KiJKPWBXZ3U5",
+      "projectId": "QlQkOverDpzuLogz",
+      "project": {
+        "id": "QlQkOverDpzuLogz",
+        "name": "Kylasam Nallagoundanpalayam Arruchamy <kylashpriya@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "643a52e5-a61e-4c09-a870-3f193f47a8ef",
+        "createdAt": "2025-12-28T20:23:01.936Z",
+        "updatedAt": "2025-12-28T20:26:22.540Z"
+      },
+      "createdAt": "2026-06-11T19:30:21.988Z",
+      "updatedAt": "2026-06-11T19:30:21.988Z"
+    }
+  ],
+  "activeVersion": null
 }
